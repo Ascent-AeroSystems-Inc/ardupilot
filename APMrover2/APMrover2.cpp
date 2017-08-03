@@ -54,7 +54,7 @@ const AP_Scheduler::Task Rover::scheduler_tasks[] = {
     SCHED_TASK(update_alt,             10,   3400),
     SCHED_TASK(update_beacon,          50,     50),
     SCHED_TASK(update_visual_odom,     50,     50),
-    SCHED_TASK(update_wheel_encoder,   50,     50),
+    SCHED_TASK(update_wheel_encoder,   20,     50),
     SCHED_TASK(navigate,               10,   1600),
     SCHED_TASK(update_compass,         10,   2000),
     SCHED_TASK(update_commands,        10,   1000),
@@ -207,13 +207,7 @@ void Rover::mount_update(void)
 void Rover::update_trigger(void)
 {
 #if CAMERA == ENABLED
-    camera.trigger_pic_cleanup();
-    if (camera.check_trigger_pin()) {
-        gcs().send_message(MSG_CAMERA_FEEDBACK);
-        if (should_log(MASK_LOG_CAMERA)) {
-            DataFlash.Log_Write_Camera(ahrs, gps, current_loc);
-        }
-    }
+    camera.update_trigger();
 #endif
 }
 
@@ -403,9 +397,7 @@ void Rover::update_GPS_10Hz(void)
             ground_speed = ahrs.groundspeed();
 
 #if CAMERA == ENABLED
-            if (camera.update_location(current_loc, rover.ahrs) == true) {
-                do_take_picture();
-            }
+            camera.update();
 #endif
         }
     }

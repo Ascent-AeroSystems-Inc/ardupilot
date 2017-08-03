@@ -233,6 +233,7 @@ private:
     // This is the state of the flight control system
     // There are multiple states defined such as MANUAL, AUTO, ...
     Mode *control_mode;
+    mode_reason_t control_mode_reason = MODE_REASON_INITIALISED;
 
     // Used to maintain the state of the previous control switch position
     // This is set to -1 when we need to re-read the switch
@@ -411,6 +412,12 @@ private:
     // last visual odometry update time
     uint32_t visual_odom_last_update_ms;
 
+    // last wheel encoder update times
+    float wheel_encoder_last_angle_rad[WHEELENCODER_MAX_INSTANCES];     // distance in radians at time of last update to EKF
+    uint32_t wheel_encoder_last_update_ms[WHEELENCODER_MAX_INSTANCES];  // system time of last ping from each encoder
+    uint32_t wheel_encoder_last_ekf_update_ms;                          // system time of last encoder data push to EKF
+    float wheel_encoder_rpm[WHEELENCODER_MAX_INSTANCES];                // for reporting to GCS
+
     // True when we are doing motor test
     bool motor_test;
 
@@ -451,16 +458,15 @@ private:
     void send_servo_out(mavlink_channel_t chan);
     void send_vfr_hud(mavlink_channel_t chan);
     void send_simstate(mavlink_channel_t chan);
-    void send_hwstatus(mavlink_channel_t chan);
     void send_pid_tuning(mavlink_channel_t chan);
     void send_rangefinder(mavlink_channel_t chan);
-    void send_current_waypoint(mavlink_channel_t chan);
+    void send_wheel_encoder(mavlink_channel_t chan);
     void gcs_data_stream_send(void);
     void gcs_update(void);
     void gcs_retry_deferred(void);
 
     Mode *control_mode_from_num(enum mode num);
-    bool set_mode(Mode &mode);
+    bool set_mode(Mode &mode, mode_reason_t reason);
     bool mavlink_set_mode(uint8_t mode);
 
     void do_erase_logs(void);
@@ -501,10 +507,6 @@ private:
     bool verify_wait_delay();
     bool verify_within_distance();
     bool verify_yaw();
-#if CAMERA == ENABLED
-    void do_take_picture();
-    void log_picture();
-#endif
     void update_commands(void);
     void delay(uint32_t ms);
     void mavlink_delay(uint32_t ms);
