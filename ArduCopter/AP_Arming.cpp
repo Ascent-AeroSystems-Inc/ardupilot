@@ -12,26 +12,19 @@ void AP_Arming_Copter::update(void)
         pre_arm_display_counter = 0;
     }
 
-    if (pre_arm_checks(display_fail)) {
-        set_pre_arm_check(true);
-    }
+    set_pre_arm_check(pre_arm_checks(display_fail));
 }
 
 // performs pre-arm checks and arming checks
 bool AP_Arming_Copter::all_checks_passing(bool arming_from_gcs)
 {
-    if (pre_arm_checks(true)) {
-        set_pre_arm_check(true);
-    } else {
-        return false;
-    }
+    set_pre_arm_check(pre_arm_checks(true));
 
     return copter.ap.pre_arm_check && arm_checks(true, arming_from_gcs);
 }
 
-// perform pre-arm checks and set ap.pre_arm_check flag
+// perform pre-arm checks
 //  return true if the checks pass successfully
-// NOTE: this does *NOT* call AP_Arming::pre_arm_checks() yet!
 bool AP_Arming_Copter::pre_arm_checks(bool display_failure)
 {
     // exit immediately if already armed
@@ -56,42 +49,18 @@ bool AP_Arming_Copter::pre_arm_checks(bool display_failure)
         if (display_failure) {
             gcs().send_text(MAV_SEVERITY_CRITICAL,"PreArm: Motor Interlock Enabled");
         }
-        return false;
-    }
-
-    // exit immediately if we've already successfully performed the pre-arm check
-    if (copter.ap.pre_arm_check) {
-        // run gps checks because results may change and affect LED colour
-        // no need to display failures because arm_checks will do that if the pilot tries to arm
-        gps_checks(false);
-        return true;
     }
 
     // succeed if pre arm checks are disabled
     if (checks_to_perform == ARMING_CHECK_NONE) {
-        set_pre_arm_check(true);
-        set_pre_arm_rc_check(true);
         return true;
     }
 
-    return barometer_checks(display_failure)
-        & rc_calibration_checks(display_failure)
-        & compass_checks(display_failure)
-        & gps_checks(display_failure)
-        & fence_checks(display_failure)
-        & ins_checks(display_failure)
-        & board_voltage_checks(display_failure)
-        & logging_checks(display_failure)
+    return fence_checks(display_failure)
         & parameter_checks(display_failure)
         & motor_checks(display_failure)
-        & pilot_throttle_checks(display_failure);
-}
-
-bool AP_Arming_Copter::rc_calibration_checks(bool display_failure)
-{
-    // pre-arm rc checks a prerequisite
-    pre_arm_rc_checks(display_failure);
-    return copter.ap.pre_arm_rc_check;
+        & pilot_throttle_checks(display_failure) &
+        AP_Arming::pre_arm_checks(display_failure);
 }
 
 bool AP_Arming_Copter::barometer_checks(bool display_failure)
@@ -177,14 +146,17 @@ bool AP_Arming_Copter::board_voltage_checks(bool display_failure)
         return false;
     }
 
-    Parameters &g = copter.g;
-
     // check battery voltage
     if ((checks_to_perform == ARMING_CHECK_ALL) || (checks_to_perform & ARMING_CHECK_VOLTAGE)) {
-        if (copter.failsafe.battery || (!copter.ap.usb_connected && copter.battery.exhausted(g.fs_batt_voltage, g.fs_batt_mah))) {
+        if (copter.battery.has_failsafed()) {
             if (display_failure) {
-                gcs().send_text(MAV_SEVERITY_CRITICAL,"PreArm: Check Battery");
+                gcs().send_text(MAV_SEVERITY_CRITICAL,"PreArm: Battery failsafe");
             }
+            return false;
+        }
+
+        // call parent battery checks
+        if (!AP_Arming::battery_checks(display_failure)) {
             return false;
         }
     }
@@ -225,12 +197,14 @@ bool AP_Arming_Copter::parameter_checks(bool display_failure)
         }
 
         // acro balance parameter check
+#if MODE_ACRO_ENABLED == ENABLED || MODE_SPORT_ENABLED == ENABLED
         if ((copter.g.acro_balance_roll > copter.attitude_control->get_angle_roll_p().kP()) || (copter.g.acro_balance_pitch > copter.attitude_control->get_angle_pitch_p().kP())) {
             if (display_failure) {
                 gcs().send_text(MAV_SEVERITY_CRITICAL,"PreArm: ACRO_BAL_ROLL/PITCH");
             }
             return false;
         }
+#endif
 
         #if RANGEFINDER_ENABLED == ENABLED && OPTFLOW == ENABLED
         // check range finder if optflow enabled
@@ -255,20 +229,81 @@ bool AP_Arming_Copter::parameter_checks(bool display_failure)
         }
 
         // check adsb avoidance failsafe
+#if ADSB_ENABLED == ENABLE
         if (copter.failsafe.adsb) {
             if (display_failure) {
                 gcs().send_text(MAV_SEVERITY_CRITICAL,"PreArm: ADSB threat detected");
             }
             return false;
         }
+#endif
 
         // check for something close to vehicle
         if (!pre_arm_proximity_check(display_failure)) {
             return false;
         }
+
+        // Check for 0 value PID's - some items can / should be 0 and as such are not checked.
+        // If the ATC_RAT_*_FF is non zero then the corresponding ATC_RAT_* PIDS can be 0.
+        if (is_zero(copter.pos_control->get_pos_xy_p().kP())) {
+            parameter_checks_pid_warning_message(display_failure, "PSC_POSXY_P");
+            return false;
+        } else if (is_zero(copter.pos_control->get_pos_z_p().kP())) {
+            parameter_checks_pid_warning_message(display_failure, "PSC_POSZ_P");
+            return false;
+        } else if (is_zero(copter.pos_control->get_vel_z_p().kP())) {
+            parameter_checks_pid_warning_message(display_failure, "PSC_VELZ_P");
+            return false;
+        } else if (is_zero(copter.pos_control->get_accel_z_pid().kP())) {
+            parameter_checks_pid_warning_message(display_failure, "PSC_ACCZ_P");
+            return false;
+        } else if (is_zero(copter.pos_control->get_accel_z_pid().kI())) {
+            parameter_checks_pid_warning_message(display_failure, "PSC_ACCZ_I");
+            return false;
+        } else if (is_zero(copter.attitude_control->get_rate_roll_pid().kP()) && is_zero(copter.attitude_control->get_rate_roll_pid().ff())) {
+            parameter_checks_pid_warning_message(display_failure, "ATC_RAT_RLL_P");
+            return false;
+        } else if (is_zero(copter.attitude_control->get_rate_roll_pid().kI()) && is_zero(copter.attitude_control->get_rate_roll_pid().ff())) {
+            parameter_checks_pid_warning_message(display_failure, "ATC_RAT_RLL_I");
+            return false;
+        } else if (is_zero(copter.attitude_control->get_rate_roll_pid().kD()) && is_zero(copter.attitude_control->get_rate_roll_pid().ff())) {
+            parameter_checks_pid_warning_message(display_failure, "ATC_RAT_RLL_D");
+            return false;
+        } else if (is_zero(copter.attitude_control->get_rate_pitch_pid().kP()) && is_zero(copter.attitude_control->get_rate_pitch_pid().ff())) {
+            parameter_checks_pid_warning_message(display_failure, "ATC_RAT_PIT_P");
+            return false;
+        } else if (is_zero(copter.attitude_control->get_rate_pitch_pid().kI()) && is_zero(copter.attitude_control->get_rate_pitch_pid().ff())) {
+            parameter_checks_pid_warning_message(display_failure, "ATC_RAT_PIT_I");
+            return false;
+        } else if (is_zero(copter.attitude_control->get_rate_pitch_pid().kD()) && is_zero(copter.attitude_control->get_rate_pitch_pid().ff())) {
+            parameter_checks_pid_warning_message(display_failure, "ATC_RAT_PIT_D");
+            return false;
+        } else if (is_zero(copter.attitude_control->get_rate_yaw_pid().kP()) && is_zero(copter.attitude_control->get_rate_yaw_pid().ff())) {
+            parameter_checks_pid_warning_message(display_failure, "ATC_RAT_YAW_P");
+            return false;
+        } else if (is_zero(copter.attitude_control->get_rate_yaw_pid().kI()) && is_zero(copter.attitude_control->get_rate_yaw_pid().ff())) {
+            parameter_checks_pid_warning_message(display_failure, "ATC_RAT_YAW_I");
+            return false;
+        } else if (is_zero(copter.attitude_control->get_angle_pitch_p().kP())) {
+            parameter_checks_pid_warning_message(display_failure, "ATC_ANG_PIT_P");
+            return false;
+        } else if (is_zero(copter.attitude_control->get_angle_roll_p().kP())) {
+            parameter_checks_pid_warning_message(display_failure, "ATC_ANG_RLL_P");
+            return false;
+        } else if (is_zero(copter.attitude_control->get_angle_yaw_p().kP())) {
+            parameter_checks_pid_warning_message(display_failure, "ATC_ANG_YAW_P");
+            return false;
+        }
     }
 
     return true;
+}
+
+void AP_Arming_Copter::parameter_checks_pid_warning_message(bool display_failure, const char *error_msg)
+{
+    if (display_failure) {
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"PreArm: Check PIDs - %s", error_msg);
+    }
 }
 
 // check motor setup was successful
@@ -304,70 +339,19 @@ bool AP_Arming_Copter::pilot_throttle_checks(bool display_failure)
     return true;
 }
 
-// perform pre_arm_rc_checks checks and set ap.pre_arm_rc_check flag
-void AP_Arming_Copter::pre_arm_rc_checks(const bool display_failure)
+bool AP_Arming_Copter::rc_calibration_checks(bool display_failure)
 {
-    // exit immediately if we've already successfully performed the pre-arm rc check
-    if (copter.ap.pre_arm_rc_check) {
-        return;
-    }
-
-    // set rc-checks to success if RC checks are disabled
-    if ((checks_to_perform != ARMING_CHECK_ALL) && !(checks_to_perform & ARMING_CHECK_RC)) {
-        set_pre_arm_rc_check(true);
-        return;
-    }
-
     const RC_Channel *channels[] = {
         copter.channel_roll,
         copter.channel_pitch,
         copter.channel_throttle,
         copter.channel_yaw
     };
-    const char *channel_names[] = { "Roll", "Pitch", "Throttle", "Yaw" };
 
-    for (uint8_t i=0; i<ARRAY_SIZE(channels);i++) {
-        const RC_Channel *channel = channels[i];
-        const char *channel_name = channel_names[i];
-        // check if radio has been calibrated
-        if (!channel->min_max_configured()) {
-            if (display_failure) {
-                gcs().send_text(MAV_SEVERITY_CRITICAL,"PreArm: RC %s not configured", channel_name);
-            }
-            return;
-        }
-        if (channel->get_radio_min() > 1300) {
-            if (display_failure) {
-                gcs().send_text(MAV_SEVERITY_CRITICAL,"PreArm: %s radio min too high", channel_name);
-            }
-            return;
-        }
-        if (channel->get_radio_max() < 1700) {
-            if (display_failure) {
-                gcs().send_text(MAV_SEVERITY_CRITICAL,"PreArm: %s radio max too low", channel_name);
-            }
-            return;
-        }
-        if (i == 2) {
-            // skip checking trim for throttle as older code did not check it
-            continue;
-        }
-        if (channel->get_radio_trim() < channel->get_radio_min()) {
-            if (display_failure) {
-                gcs().send_text(MAV_SEVERITY_CRITICAL,"PreArm: %s radio trim below min", channel_name);
-            }
-            return;
-        }
-        if (channel->get_radio_trim() > channel->get_radio_max()) {
-            if (display_failure) {
-                gcs().send_text(MAV_SEVERITY_CRITICAL,"PreArm: %s radio trim above max", channel_name);
-            }
-            return;
-        }
-    }
+    copter.ap.pre_arm_rc_check = rc_checks_copter_sub(display_failure, channels)
+        & AP_Arming::rc_calibration_checks(display_failure);
 
-    // if we've gotten this far rc is ok
-    set_pre_arm_rc_check(true);
+    return copter.ap.pre_arm_rc_check;
 }
 
 // performs pre_arm gps related checks and returns true if passed
@@ -382,7 +366,7 @@ bool AP_Arming_Copter::gps_checks(bool display_failure)
     }
 
     // check if flight mode requires GPS
-    bool mode_requires_gps = copter.mode_requires_GPS(copter.control_mode);
+    bool mode_requires_gps = copter.flightmode->requires_GPS();
 
     // check if fence requires GPS
     bool fence_requires_gps = false;
@@ -414,6 +398,17 @@ bool AP_Arming_Copter::gps_checks(bool display_failure)
         }
         AP_Notify::flags.pre_arm_gps_check = false;
         return false;
+    }
+
+    // check for GPS glitch (as reported by EKF)
+    nav_filter_status filt_status;
+    if (_ahrs_navekf.get_filter_status(filt_status)) {
+        if (filt_status.flags.gps_glitching) {
+            if (display_failure) {
+                gcs().send_text(MAV_SEVERITY_CRITICAL,"PreArm: GPS glitching");
+            }
+            return false;
+        }
     }
 
     // check EKF compass variance is below failsafe threshold
@@ -454,6 +449,7 @@ bool AP_Arming_Copter::gps_checks(bool display_failure)
 
     // call parent gps checks
     if (!AP_Arming::gps_checks(display_failure)) {
+        AP_Notify::flags.pre_arm_gps_check = false;
         return false;
     }
 
@@ -544,37 +540,6 @@ bool AP_Arming_Copter::pre_arm_proximity_check(bool display_failure)
 //  has side-effect that logging is started
 bool AP_Arming_Copter::arm_checks(bool display_failure, bool arming_from_gcs)
 {
-    // check accels and gyro are healthy
-    if ((checks_to_perform == ARMING_CHECK_ALL) || (checks_to_perform & ARMING_CHECK_INS)) {
-        //check if accelerometers have calibrated and require reboot
-        if (_ins.accel_cal_requires_reboot()) {
-            if (display_failure) {
-                gcs().send_text(MAV_SEVERITY_CRITICAL, "PreArm: Accels calibrated requires reboot");
-            }
-            return false;
-        }
-
-        if (!_ins.get_accel_health_all()) {
-            if (display_failure) {
-                gcs().send_text(MAV_SEVERITY_CRITICAL,"Arm: Accels not healthy");
-            }
-            return false;
-        }
-        if (!_ins.get_gyro_health_all()) {
-            if (display_failure) {
-                gcs().send_text(MAV_SEVERITY_CRITICAL,"Arm: Gyros not healthy");
-            }
-            return false;
-        }
-        // get ekf attitude (if bad, it's usually the gyro biases)
-        if (!pre_arm_ekf_attitude_check()) {
-            if (display_failure) {
-                gcs().send_text(MAV_SEVERITY_CRITICAL,"Arm: gyros still settling");
-            }
-            return false;
-        }
-    }
-
     // always check if inertial nav has started and is ready
     if (!ahrs.healthy()) {
         if (display_failure) {
@@ -583,6 +548,7 @@ bool AP_Arming_Copter::arm_checks(bool display_failure, bool arming_from_gcs)
         return false;
     }
 
+#ifndef ALLOW_ARM_NO_COMPASS
     // check compass health
     if (!_compass.healthy()) {
         if (display_failure) {
@@ -590,6 +556,7 @@ bool AP_Arming_Copter::arm_checks(bool display_failure, bool arming_from_gcs)
         }
         return false;
     }
+#endif
 
     if (_compass.is_calibrating()) {
         if (display_failure) {
@@ -601,7 +568,7 @@ bool AP_Arming_Copter::arm_checks(bool display_failure, bool arming_from_gcs)
     //check if compass has calibrated and requires reboot
     if (_compass.compass_cal_requires_reboot()) {
         if (display_failure) {
-            gcs().send_text(MAV_SEVERITY_CRITICAL, "PreArm: Compass calibrated requires reboot");
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "Arm: Compass calibrated requires reboot");
         }
         return false;
     }
@@ -609,15 +576,10 @@ bool AP_Arming_Copter::arm_checks(bool display_failure, bool arming_from_gcs)
     control_mode_t control_mode = copter.control_mode;
 
     // always check if the current mode allows arming
-    if (!copter.mode_allows_arming(control_mode, arming_from_gcs)) {
+    if (!copter.flightmode->allows_arming(arming_from_gcs)) {
         if (display_failure) {
             gcs().send_text(MAV_SEVERITY_CRITICAL,"Arm: Mode not armable");
         }
-        return false;
-    }
-
-    // always check gps
-    if (!gps_checks(display_failure)) {
         return false;
     }
 
@@ -648,39 +610,6 @@ bool AP_Arming_Copter::arm_checks(bool display_failure, bool arming_from_gcs)
         return true;
     }
 
-    // baro checks
-    if ((checks_to_perform == ARMING_CHECK_ALL) || (checks_to_perform & ARMING_CHECK_BARO)) {
-        // baro health check
-        if (!barometer.all_healthy()) {
-            if (display_failure) {
-                gcs().send_text(MAV_SEVERITY_CRITICAL,"Arm: Barometer not healthy");
-            }
-            return false;
-        }
-        // Check baro & inav alt are within 1m if EKF is operating in an absolute position mode.
-        // Do not check if intending to operate in a ground relative height mode as EKF will output a ground relative height
-        // that may differ from the baro height due to baro drift.
-        nav_filter_status filt_status = _inav.get_filter_status();
-        bool using_baro_ref = (!filt_status.flags.pred_horiz_pos_rel && filt_status.flags.pred_horiz_pos_abs);
-        if (using_baro_ref && (fabsf(_inav.get_altitude() - copter.baro_alt) > PREARM_MAX_ALT_DISPARITY_CM)) {
-            if (display_failure) {
-                gcs().send_text(MAV_SEVERITY_CRITICAL,"Arm: Altitude disparity");
-            }
-            return false;
-        }
-    }
-
-    #if AC_FENCE == ENABLED
-    // check vehicle is within fence
-    const char *fail_msg = nullptr;
-    if (!copter.fence.pre_arm_check(fail_msg)) {
-        if (display_failure && fail_msg != nullptr) {
-            gcs().send_text(MAV_SEVERITY_CRITICAL, "Arm: %s", fail_msg);
-        }
-        return false;
-    }
-    #endif
-
     // check lean angle
     if ((checks_to_perform == ARMING_CHECK_ALL) || (checks_to_perform & ARMING_CHECK_INS)) {
         if (degrees(acosf(ahrs.cos_roll()*ahrs.cos_pitch()))*100.0f > copter.aparm.angle_max) {
@@ -691,24 +620,8 @@ bool AP_Arming_Copter::arm_checks(bool display_failure, bool arming_from_gcs)
         }
     }
 
-    // check battery voltage
-    if ((checks_to_perform == ARMING_CHECK_ALL) || (checks_to_perform & ARMING_CHECK_VOLTAGE)) {
-        if (copter.failsafe.battery || (!copter.ap.usb_connected && copter.battery.exhausted(copter.g.fs_batt_voltage, copter.g.fs_batt_mah))) {
-            if (display_failure) {
-                gcs().send_text(MAV_SEVERITY_CRITICAL,"Arm: Check Battery");
-            }
-            return false;
-        }
-    }
-
-    // check for missing terrain data
-    if ((checks_to_perform == ARMING_CHECK_ALL) || (checks_to_perform & ARMING_CHECK_PARAMETERS)) {
-        if (!pre_arm_terrain_check(display_failure)) {
-            return false;
-        }
-    }
-
     // check adsb
+#if ADSB_ENABLED == ENABLE
     if ((checks_to_perform == ARMING_CHECK_ALL) || (checks_to_perform & ARMING_CHECK_PARAMETERS)) {
         if (copter.failsafe.adsb) {
             if (display_failure) {
@@ -717,6 +630,7 @@ bool AP_Arming_Copter::arm_checks(bool display_failure, bool arming_from_gcs)
             return false;
         }
     }
+#endif
 
     // check throttle
     if ((checks_to_perform == ARMING_CHECK_ALL) || (checks_to_perform & ARMING_CHECK_RC)) {
@@ -746,7 +660,7 @@ bool AP_Arming_Copter::arm_checks(bool display_failure, bool arming_from_gcs)
                 return false;
             }
             // in manual modes throttle must be at zero
-            if ((copter.mode_has_manual_throttle(control_mode) || control_mode == DRIFT) && copter.channel_throttle->get_control_in() > 0) {
+            if ((copter.flightmode->has_manual_throttle() || control_mode == DRIFT) && copter.channel_throttle->get_control_in() > 0) {
                 if (display_failure) {
                     #if FRAME_CONFIG == HELI_FRAME
                     gcs().send_text(MAV_SEVERITY_CRITICAL,"Arm: Collective too high");
@@ -773,22 +687,8 @@ bool AP_Arming_Copter::arm_checks(bool display_failure, bool arming_from_gcs)
     return AP_Arming::arm_checks(arming_from_gcs);
 }
 
-enum HomeState AP_Arming_Copter::home_status() const
-{
-    return copter.ap.home_state;
-}
-
 void AP_Arming_Copter::set_pre_arm_check(bool b)
 {
-    if(copter.ap.pre_arm_check != b) {
-        copter.ap.pre_arm_check = b;
-        AP_Notify::flags.pre_arm_check = b;
-    }
-}
-
-void AP_Arming_Copter::set_pre_arm_rc_check(bool b)
-{
-    if(copter.ap.pre_arm_rc_check != b) {
-        copter.ap.pre_arm_rc_check = b;
-    }
+    copter.ap.pre_arm_check = b;
+    AP_Notify::flags.pre_arm_check = b;
 }

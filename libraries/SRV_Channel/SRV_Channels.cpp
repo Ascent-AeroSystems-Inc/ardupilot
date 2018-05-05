@@ -25,6 +25,16 @@
 extern const AP_HAL::HAL& hal;
 
 SRV_Channel *SRV_Channels::channels;
+SRV_Channels *SRV_Channels::instance;
+AP_Volz_Protocol *SRV_Channels::volz_ptr;
+AP_SBusOut *SRV_Channels::sbus_ptr;
+
+#if HAL_SUPPORT_RCOUT_SERIAL
+AP_BLHeli *SRV_Channels::blheli_ptr;
+#endif
+
+uint16_t SRV_Channels::disabled_mask;
+
 bool SRV_Channels::disabled_passthrough;
 bool SRV_Channels::initialised;
 Bitmask SRV_Channels::function_mask{SRV_Channel::k_nr_aux_servo_functions};
@@ -94,7 +104,7 @@ const AP_Param::GroupInfo SRV_Channels::var_info[] = {
     // @Group: 16_
     // @Path: SRV_Channel.cpp
     AP_SUBGROUPINFO(obj_channels[15], "16_",  16, SRV_Channels, SRV_Channel),
-    
+
     // @Param: _AUTO_TRIM
     // @DisplayName: Automatic servo trim
     // @Description: This enables automatic servo trim in flight. Servos will be trimed in stabilized flight modes when the aircraft is close to level. Changes to servo trim will be saved every 10 seconds and will persist between flights.
@@ -102,6 +112,28 @@ const AP_Param::GroupInfo SRV_Channels::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO_FRAME("_AUTO_TRIM",  17, SRV_Channels, auto_trim, 0, AP_PARAM_FRAME_PLANE),
 
+    // @Param: _RATE
+    // @DisplayName: Servo default output rate
+    // @Description: This sets the default output rate in Hz for all outputs.
+    // @Range: 25 400
+    // @User: Advanced
+    // @Units: Hz
+    AP_GROUPINFO("_RATE",  18, SRV_Channels, default_rate, 50),
+
+    // @Group: _VOLZ_
+    // @Path: ../AP_Volz_Protocol/AP_Volz_Protocol.cpp
+    AP_SUBGROUPINFO(volz, "_VOLZ_",  19, SRV_Channels, AP_Volz_Protocol),
+
+    // @Group: _SBUS_
+    // @Path: ../AP_SBusOut/AP_SBusOut.cpp
+    AP_SUBGROUPINFO(sbus, "_SBUS_",  20, SRV_Channels, AP_SBusOut),
+
+#if HAL_SUPPORT_RCOUT_SERIAL
+    // @Group: _BLH_
+    // @Path: ../AP_BLHeli/AP_BLHeli.cpp
+    AP_SUBGROUPINFO(blheli, "_BLH_",  21, SRV_Channels, AP_BLHeli),
+#endif
+    
     AP_GROUPEND
 };
 
@@ -110,8 +142,9 @@ const AP_Param::GroupInfo SRV_Channels::var_info[] = {
  */
 SRV_Channels::SRV_Channels(void)
 {
+    instance = this;
     channels = obj_channels;
-    
+
     // set defaults from the parameter table
     AP_Param::setup_object_defaults(this, var_info);
 
@@ -119,6 +152,12 @@ SRV_Channels::SRV_Channels(void)
     for (uint8_t i=0; i<NUM_SERVO_CHANNELS; i++) {
         channels[i].ch_num = i;
     }
+
+    volz_ptr = &volz;
+    sbus_ptr = &sbus;
+#if HAL_SUPPORT_RCOUT_SERIAL
+    blheli_ptr = &blheli;
+#endif
 }
 
 /*
@@ -164,4 +203,31 @@ void SRV_Channels::set_output_pwm_chan(uint8_t chan, uint16_t value)
     if (chan < NUM_SERVO_CHANNELS) {
         channels[chan].set_output_pwm(value);
     }
+}
+
+/*
+  wrapper around hal.rcout->cork()
+ */
+void SRV_Channels::cork()
+{
+	hal.rcout->cork();
+}
+
+/*
+  wrapper around hal.rcout->push()
+ */
+void SRV_Channels::push()
+{
+    hal.rcout->push();
+
+    // give volz library a chance to update
+    volz_ptr->update();
+
+    // give sbus library a chance to update
+    sbus_ptr->update();
+
+#if HAL_SUPPORT_RCOUT_SERIAL
+    // give blheli telemetry a chance to update
+    blheli_ptr->update_telemetry();
+#endif
 }

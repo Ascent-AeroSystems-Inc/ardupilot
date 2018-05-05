@@ -63,7 +63,7 @@ bool Sub::start_command(const AP_Mission::Mission_Command& cmd)
         break;
 #endif
 
-    case MAV_CMD_NAV_DELAY:                    // 94 Delay the next navigation command
+    case MAV_CMD_NAV_DELAY:                    // 93 Delay the next navigation command
         do_nav_delay(cmd);
         break;
 
@@ -145,7 +145,7 @@ bool Sub::start_command(const AP_Mission::Mission_Command& cmd)
 #endif
 
 #if NAV_GUIDED == ENABLED
-    case MAV_CMD_DO_GUIDED_LIMITS:                      // 220  accept guided mode limits
+    case MAV_CMD_DO_GUIDED_LIMITS:                      // 222  accept guided mode limits
         do_guided_limits(cmd);
         break;
 #endif
@@ -163,7 +163,7 @@ bool Sub::start_command(const AP_Mission::Mission_Command& cmd)
 // Verify command Handlers
 /********************************************************************************/
 
-// check to see if current command goal has been acheived
+// check to see if current command goal has been achieved
 // called by mission library in mission.update()
 bool Sub::verify_command_callback(const AP_Mission::Mission_Command& cmd)
 {
@@ -873,37 +873,14 @@ void Sub::do_digicam_configure(const AP_Mission::Mission_Command& cmd)
 // do_digicam_control Send Digicam Control message with the camera library
 void Sub::do_digicam_control(const AP_Mission::Mission_Command& cmd)
 {
-    if (camera.control(cmd.content.digicam_control.session,
-                       cmd.content.digicam_control.zoom_pos,
-                       cmd.content.digicam_control.zoom_step,
-                       cmd.content.digicam_control.focus_lock,
-                       cmd.content.digicam_control.shooting_cmd,
-                       cmd.content.digicam_control.cmd_id)) {
-        log_picture();
-    }
+    camera.control(cmd.content.digicam_control.session,
+                   cmd.content.digicam_control.zoom_pos,
+                   cmd.content.digicam_control.zoom_step,
+                   cmd.content.digicam_control.focus_lock,
+                   cmd.content.digicam_control.shooting_cmd,
+                   cmd.content.digicam_control.cmd_id);
 }
 
-// do_take_picture - take a picture with the camera library
-void Sub::do_take_picture()
-{
-    camera.trigger_pic(true);
-    log_picture();
-}
-
-// log_picture - log picture taken and send feedback to GCS
-void Sub::log_picture()
-{
-    if (!camera.using_feedback_pin()) {
-        gcs().send_message(MSG_CAMERA_FEEDBACK);
-        if (should_log(MASK_LOG_CAMERA)) {
-            DataFlash.Log_Write_Camera(ahrs, gps, current_loc);
-        }
-    } else {
-        if (should_log(MASK_LOG_CAMERA)) {
-            DataFlash.Log_Write_Trigger(ahrs, gps, current_loc);
-        }
-    }
-}
 #endif
 
 // point the camera to a specified angle

@@ -53,8 +53,8 @@ bool NavEKF3_core::setup_core(NavEKF3 *_frontend, uint8_t _imu_index, uint8_t _c
      */
 
     // Calculate the expected EKF time step
-    if (_ahrs->get_ins().get_sample_rate() > 0) {
-        dtEkfAvg = 1.0f / _ahrs->get_ins().get_sample_rate();
+    if (AP::ins().get_sample_rate() > 0) {
+        dtEkfAvg = 1.0f / AP::ins().get_sample_rate();
         dtEkfAvg = MAX(dtEkfAvg,EKF_TARGET_DT);
     } else {
         return false;
@@ -72,7 +72,7 @@ bool NavEKF3_core::setup_core(NavEKF3 *_frontend, uint8_t _imu_index, uint8_t _c
     if (_frontend->_fusionModeGPS != 3) {
         // Wait for the configuration of all GPS units to be confirmed. Until this has occurred the GPS driver cannot provide a correct time delay
         float gps_delay_sec = 0;
-        if (!_ahrs->get_gps().get_lag(gps_delay_sec)) {
+        if (!AP::gps().get_lag(gps_delay_sec)) {
             if (AP_HAL::millis() - lastInitFailReport_ms > 10000) {
                 lastInitFailReport_ms = AP_HAL::millis();
                 // provide an escalating series of messages
@@ -125,6 +125,9 @@ bool NavEKF3_core::setup_core(NavEKF3 *_frontend, uint8_t _imu_index, uint8_t _c
     if(!storedBodyOdm.init(obs_buffer_length)) {
         return false;
     }
+    if(!storedWheelOdm.init(imu_buffer_length)) { // initialise to same length of IMU to allow for multiple wheel sensors
+        return false;
+    }
     // Note: the use of dual range finders potentially doubles the amount of data to be stored
     if(!storedRange.init(MIN(2*obs_buffer_length , imu_buffer_length))) {
         return false;
@@ -152,7 +155,7 @@ bool NavEKF3_core::setup_core(NavEKF3 *_frontend, uint8_t _imu_index, uint8_t _c
 void NavEKF3_core::InitialiseVariables()
 {
     // calculate the nominal filter update rate
-    const AP_InertialSensor &ins = _ahrs->get_ins();
+    const AP_InertialSensor &ins = AP::ins();
     localFilterTimeStep_ms = (uint8_t)(1000*ins.get_loop_delta_t());
     localFilterTimeStep_ms = MAX(localFilterTimeStep_ms, (uint8_t)EKF_TARGET_DT_MS);
 
@@ -365,7 +368,6 @@ void NavEKF3_core::InitialiseVariables()
     // body frame displacement fusion
     memset(&bodyOdmDataNew, 0, sizeof(bodyOdmDataNew));
     memset(&bodyOdmDataDelayed, 0, sizeof(bodyOdmDataDelayed));
-    bodyOdmStoreIndex = 0;
     lastbodyVelPassTime_ms = 0;
     memset(&bodyVelTestRatio, 0, sizeof(bodyVelTestRatio));
     memset(&varInnovBodyVel, 0, sizeof(varInnovBodyVel));
@@ -374,6 +376,8 @@ void NavEKF3_core::InitialiseVariables()
     bodyOdmMeasTime_ms = 0;
     bodyVelFusionDelayed = false;
     bodyVelFusionActive = false;
+    usingWheelSensors = false;
+    wheelOdmMeasTime_ms = 0;
 
     // zero data buffers
     storedIMU.reset();
@@ -385,6 +389,7 @@ void NavEKF3_core::InitialiseVariables()
     storedOutput.reset();
     storedRangeBeacon.reset();
     storedBodyOdm.reset();
+    storedWheelOdm.reset();
 }
 
 // Initialise the states from accelerometer and magnetometer data (if present)
@@ -392,7 +397,7 @@ void NavEKF3_core::InitialiseVariables()
 bool NavEKF3_core::InitialiseFilterBootstrap(void)
 {
     // If we are a plane and don't have GPS lock then don't initialise
-    if (assume_zero_sideslip() && _ahrs->get_gps().status() < AP_GPS::GPS_OK_FIX_3D) {
+    if (assume_zero_sideslip() && AP::gps().status() < AP_GPS::GPS_OK_FIX_3D) {
         statesInitialised = false;
         return false;
     }
@@ -402,6 +407,13 @@ bool NavEKF3_core::InitialiseFilterBootstrap(void)
     readMagData();
     readGpsData();
     readBaroData();
+
+    if (statesInitialised) {
+        // we are initialised, but we don't return true until the IMU
+        // buffer has been filled. This prevents a timing
+        // vulnerability with a pause in IMU data during filter startup
+        return storedIMU.is_filled();
+    }
 
     // accumulate enough sensor data to fill the buffers
     if (firstInitTime_ms == 0) {
@@ -418,7 +430,7 @@ bool NavEKF3_core::InitialiseFilterBootstrap(void)
     Vector3f initAccVec;
 
     // TODO we should average accel readings over several cycles
-    initAccVec = _ahrs->get_ins().get_accel(imu_index);
+    initAccVec = AP::ins().get_accel(imu_index);
 
     // normalise the acceleration vector
     float pitch=0, roll=0;
@@ -464,7 +476,8 @@ bool NavEKF3_core::InitialiseFilterBootstrap(void)
     statesInitialised = true;
     gcs().send_text(MAV_SEVERITY_INFO, "EKF3 IMU%u initialised",(unsigned)imu_index);
 
-    return true;
+    // we initially return false to wait for the IMU buffer to fill
+    return false;
 }
 
 // initialise the covariance matrix
@@ -1617,7 +1630,7 @@ Vector3f NavEKF3_core::calcRotVecVariances()
         q3 = -q3;
     }
     float t2 = q0*q0;
-    float t3 = acos(q0);
+    float t3 = acosf(q0);
     float t4 = -t2+1.0f;
     float t5 = t2-1.0f;
     if ((t4 > 1e-9f) && (t5 < -1e-9f)) {

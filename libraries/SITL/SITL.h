@@ -81,9 +81,16 @@ public:
     AP_Vector3f accel_bias; // in m/s/s
     AP_Vector3f accel2_bias; // in m/s/s
     AP_Float arspd_noise;  // in m/s
-    AP_Float arspd_fail;   // pitot tube failure
+    AP_Float arspd_fail;   // 1st pitot tube failure
+    AP_Float arspd2_fail;   // 2nd pitot tube failure
+    AP_Float arspd_fail_pressure; // 1st pitot tube failure pressure
+    AP_Float arspd_fail_pitot_pressure; // 1st pitot tube failure pressure
+    AP_Float arspd2_fail_pressure; // 2nd pitot tube failure pressure
+    AP_Float arspd2_fail_pitot_pressure; // 2nd pitot tube failure pressure
     AP_Float gps_noise; // amplitude of the gps altitude error
     AP_Int16 gps_lock_time; // delay in seconds before GPS gets lock
+    AP_Int16 gps_alt_offset; // gps alt error
+    AP_Int8  vicon_observation_history_length; // frame delay for vicon messages
 
     AP_Float mag_noise;   // in mag units (earth field is 818)
     AP_Float mag_error;   // in degrees
@@ -118,17 +125,28 @@ public:
     AP_Int16 flow_rate; // optflow data rate (Hz)
     AP_Int8  flow_delay; // optflow data delay
     AP_Int8  terrain_enable; // enable using terrain for height
-    AP_Int8  pin_mask; // for GPIO emulation
+    AP_Int16 pin_mask; // for GPIO emulation
     AP_Float speedup; // simulation speedup
     AP_Int8  odom_enable; // enable visual odomotry data
     
     // wind control
+    enum WindType {
+        WIND_TYPE_SQRT = 0,
+        WIND_TYPE_NO_LIMIT = 1,
+        WIND_TYPE_COEF = 2,
+    };
+    
     float wind_speed_active;
     float wind_direction_active;
+    float wind_dir_z_active;
     AP_Float wind_speed;
     AP_Float wind_direction;
     AP_Float wind_turbulance;
     AP_Float gps_drift_alt;
+    AP_Float wind_dir_z;
+    AP_Int8  wind_type; // enum WindLimitType
+    AP_Float wind_type_alt;
+    AP_Float wind_type_coef;
 
     AP_Int16  baro_delay; // barometer data delay in ms
     AP_Int16  mag_delay; // magnetometer data delay in ms
@@ -156,6 +174,9 @@ public:
     AP_Float temp_tconst;
     AP_Float temp_baro_factor;
     
+    // differential pressure sensor tube order
+    AP_Int8 arspd_signflip;
+
     uint16_t irlock_port;
 
     void simstate_send(mavlink_channel_t chan);

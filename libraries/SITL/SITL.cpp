@@ -104,6 +104,18 @@ const AP_Param::GroupInfo SITL::var_info2[] = {
     AP_GROUPINFO("TEMP_TCONST",  3, SITL,  temp_tconst, 30),
     AP_GROUPINFO("TEMP_BFACTOR", 4, SITL,  temp_baro_factor, 0),
     AP_GROUPINFO("GPS_LOCKTIME", 5, SITL,  gps_lock_time, 0),
+    AP_GROUPINFO("ARSPD_FAIL_P", 6, SITL,  arspd_fail_pressure, 0),
+    AP_GROUPINFO("ARSPD_PITOT",  7, SITL,  arspd_fail_pitot_pressure, 0),
+    AP_GROUPINFO("GPS_ALT_OFS",  8, SITL,  gps_alt_offset, 0),
+    AP_GROUPINFO("ARSPD_SIGN",   9, SITL,  arspd_signflip, 0),
+    AP_GROUPINFO("WIND_DIR_Z",  10, SITL,  wind_dir_z,     0),
+    AP_GROUPINFO("ARSPD2_FAIL", 11, SITL,  arspd2_fail, 0),
+    AP_GROUPINFO("ARSPD2_FAILP",12, SITL,  arspd2_fail_pressure, 0),
+    AP_GROUPINFO("ARSPD2_PITOT",13, SITL,  arspd2_fail_pitot_pressure, 0),
+    AP_GROUPINFO("VICON_HSTLEN",14, SITL,  vicon_observation_history_length, 0),
+    AP_GROUPINFO("WIND_T"      ,15, SITL,  wind_type, SITL::WIND_TYPE_SQRT),
+    AP_GROUPINFO("WIND_T_ALT"  ,16, SITL,  wind_type_alt, 60),
+    AP_GROUPINFO("WIND_T_COEF", 17, SITL,  wind_type_coef, 0.01f),
     AP_GROUPEND
 };
     
