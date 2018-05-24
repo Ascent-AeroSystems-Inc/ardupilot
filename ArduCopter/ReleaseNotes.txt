@@ -1,5 +1,109 @@
 ArduPilot Copter Release Notes:
 ------------------------------------------------------------------
+Copter 3.6.0-rc1 19-Apr-2018
+Changes from 3.5.5
+1) ChibiOS support including F4BY, OpenPilot Revo Mini, TauLabs Sparky2 boards
+2) Flight mode changes:
+    a) New Loiter with faster roll and pitch response, braking
+    b) SmartRTL (returns home using outgoing path)
+    c) Follow mode (allows following without relying on ground station commands)
+    d) FlowHold (position hold with optical flow without lidar)
+3) Battery failsafe allows two stages of actions and monitoring of multiple batteries
+4) New sensors/drivers:
+    a) Marvelmind for Non-GPS navigation
+    b) RPLidarA2/A3 for object avoidance
+    c) Winch for lowering packages without landing
+    d) Septentrio GPS driver robustness improved
+5) New frames:
+    a) dodeca-hexa copter (12 motors on 6 arms)
+    b) Variable pitch quadcopter support (aka HeliQuad)
+    c) multicopters with vertical boosting motor (see MOT_BOOST_SCALE parameter)
+6) Miscellaneous changes and enhancements:
+    a) Auxiliary switch to enable/disable RC overrides from ground station joystick
+    b) Barometer temperature calibration learning (see TCAL_ENABLED parameter)
+    c) Camera triggering by distance only in Auto mode if CAM_AUTO_ONLY set to 1
+    d) Compass noise rejection using COMPASS_FLTR_RNG parameter
+    e) Compass interference compensation for up to 4 motors (see COMPASS_PMOT parameters)
+    f) Command Line Interface (aka CLI) removed to reduce firmware size
+    g) Flight mode channel can be changed using FLTMODE_CH parameter
+    h) IMU notch filter to ignore specific frequencies (use INS_NOTCH_ENABLE parameter)
+    i) LAND_ALT_LOW parameter allows setting altitude at which vehicle slows to LAND_SPEED in Land and RTL modes
+    j) Mission cleared automatically on each reboot if MIS_OPTIONS parameter set to 1
+    k) Object avoidance configurable to "stick" to barriers (previously would always slide past)
+    l) PILOT_SPEED_UP, PILOT_SPEED_DN allow different max climb and descent rates in AltHold, Loiter, PosHold
+    m) Safety switch configurable (i.e. only allow arming but not disarming via switch)
+    n) Servo output rate configurable (see SERVO_RATE parameter)
+    o) Vehicle rotation rate limits (see ATC_RATE_P/R/Y_MAX parameters)
+    p) SI units in parameters, mavlink messages and dataflash logs
+7) TradHeli improvements:
+    a) H3-135/140 swashplate support
+    b) Reversed collective option for leading/trailing edge control
+    c) AltHold angle limiter fix
+    d) Five point spline-smoothed throttle curve 
+8) parameter and log message name changes:
+    a) ACCEL_Z_ renamed to PSC_ACCZ_
+    b) ACC_ parameters renamed to PSC_ACC
+    c) POS_ parameters renamed to PSC_POS
+    d) VEL_ parameters renamed to PSC_VEL
+    e) FS_BATT_ renamed to BATT_FS_
+    f) BATT_AMP_PERVOLT renamed to BATT_AMP_PERVLT
+    g) PILOT_VELZ_MAX to PILOT_SPEED_UP (and PILOT_SPEED_DN)
+    h) RC_FEEL_RP replaced with ATC_INPUT_TC (functionality is same, scaling is different)
+    i) WPNAV_LOIT_ params renamed to LOIT_    
+    j) NTUN dataflash message renamed to PSC
+------------------------------------------------------------------
+Copter 3.5.5-rc1 24-Jan-2018
+Changes from 3.5.4
+1) ICM20948 compass orientation fix
+2) LIS3MDL compass support on Pixracer
+3) support for easy embedding of defaults in firmware binary
+4) do-mount-control control command sets copter yaw when using 2-axis gimbal
+5) TradHeli fix for direct drive variable pitch tail rotors
+------------------------------------------------------------------
+Copter 3.5.4 23-Nov-2017 / 3.5.4-rc2 17-Nov-2017
+Changes from 3.5.3
+1) Compass improvements / bug fixes:
+    a) probe for LIS3MDL on I2C address 0x1e
+    b) bug fix pixracer compass detection
+------------------------------------------------------------------
+Copter 3.5.4-rc1 08-Nov-2017
+Changes from 3.5.3
+1) Compass improvements:
+    a) support added for QMC5883L, LIS3MDL, IST8310
+    b) COMPASS_TYPEMASK parameter allows enabling/disabling individual compass drivers
+2) LightWare and MaxBotix range finders supported on both I2C buses
+3) Serial port 5 can be used for telemetry or sensors (previously was only for NuttX console)
+4) px4pro flight controller supported
+5) TradHeli fixes:
+    a) motor runup check applies to all flight modes (previously only loiter, poshold, althold)
+    b) swashplate behaviour changes when on ground in acro, stabilize and althold
+    c) servo test function fixed
+    d) direct drive fixed pitch tail fix
+    e) Z-axis Accel P gain default lowered to 0.3
+6) EKF origin set using SET_GPS_GLOBAL_ORIGIN mavlink message instead of SET_HOME_POSITION
+7) Intel Aero supports 921600 baud rate between main flight controller and companion computer
+8) Bug fix to I2C race condition on Pixhawk that could occasionally cause I2C device to not be detected
+------------------------------------------------------------------
+Copter 3.5.3 21-Sep-2017 / Copter 3.5.3-rc1 12-Sep-2017
+Changes from 3.5.2
+1) Guided mode support yaw and yaw-rate fields from set-position-target message
+2) Optical Flow startup retries 10 times 
+3) Bug fixes:
+    a) Septentrio RTK GPS driver robustness improvements for long messages
+    b) dataflash not-logging checks if not initialised
+    c) fix reporting of relative-position-NE-to-home (most users will not notice this difference) 
+------------------------------------------------------------------
+Copter 3.5.2 14-Aug-2017 / Copter 3.5.2-rc1 05-Aug-2017
+Changes from 3.5.1
+1) GPS glitch arming check and notification (flashing blue-yellow LED, message on HUD)
+2) Arming check for minimum voltage (see ARMING_VOLT_MIN parameter)
+3) Landing Gear startup behaviour now configurable (see LGR_STARTUP parameter)
+4) Solo LED fix when using "boat" mode
+5) Intel Aero RTF gets one more I2C bus
+6) Bug fixes:
+    a) resolve barometer floating point exception when ground pressure set to be negative
+    b) resolve freeze if SERVOx_FUNCTION is set above 80   
+------------------------------------------------------------------
 Copter 3.5.1 31-July-2017 / 3.5.1-rc1 24-July-2017
 Changes from 3.5.0
 1) fix to RC input corruption when using Spektrum DSMx with Pixracer 

@@ -56,17 +56,13 @@
   #define CURRENT_PIN_1    -1
 #endif
 
-//////////////////////////////////////////////////////////////////////////////
-// HIL_MODE                                 OPTIONAL
-
-#ifndef HIL_MODE
-  #define HIL_MODE HIL_MODE_DISABLED
-#endif
-
 #ifndef MAV_SYSTEM_ID
   #define MAV_SYSTEM_ID    1
 #endif
 
+#ifndef ARM_DELAY_MS
+  #define ARM_DELAY_MS  2000
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 // FrSky telemetry support
@@ -79,10 +75,6 @@
 
 #ifndef CH7_OPTION
   #define CH7_OPTION CH7_SAVE_WP
-#endif
-
-#ifndef TUNING_OPTION
-  #define TUNING_OPTION TUN_NONE
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -104,33 +96,12 @@
   #error XXX
 #endif
 
-#if !defined(MODE_1)
-  #define MODE_1    LEARNING
-#endif
-#if !defined(MODE_2)
-  #define MODE_2    LEARNING
-#endif
-#if !defined(MODE_3)
-  #define MODE_3    LEARNING
-#endif
-#if !defined(MODE_4)
-  #define MODE_4    LEARNING
-#endif
-#if !defined(MODE_5)
-  #define MODE_5    LEARNING
-#endif
-#if !defined(MODE_6)
-  #define MODE_6    MANUAL
-#endif
-
 
 //////////////////////////////////////////////////////////////////////////////
-// THROTTLE_OUT
-//
-#ifndef THROTTE_OUT
-  #define THROTTLE_OUT ENABLED
+//  VISUAL ODOMETRY
+#ifndef VISUAL_ODOMETRY_ENABLED
+# define VISUAL_ODOMETRY_ENABLED ENABLED
 #endif
-
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
@@ -167,27 +138,14 @@
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
-// AIRSPEED_CRUISE
+// CRUISE_SPEED default
 //
-#ifndef SPEED_CRUISE
-  #define SPEED_CRUISE    5  // in m/s
+#ifndef CRUISE_SPEED
+  #define CRUISE_SPEED    2  // in m/s
 #endif
 
 #ifndef TURN_GAIN
   #define TURN_GAIN       5
-#endif
-
-//////////////////////////////////////////////////////////////////////////////
-// Servo Mapping
-//
-#ifndef THROTTLE_MIN
-  #define THROTTLE_MIN      0  // percent
-#endif
-#ifndef THROTTLE_CRUISE
-  #define THROTTLE_CRUISE  45
-#endif
-#ifndef THROTTLE_MAX
-  #define THROTTLE_MAX    100
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -204,16 +162,6 @@
 // Developer Items
 //
 
-// use this to enable servos in HIL mode
-#ifndef HIL_SERVOS
-  #define HIL_SERVOS DISABLED
-#endif
-
-// use this to completely disable the CLI
-#ifndef CLI_ENABLED
-  #define CLI_ENABLED ENABLED
-#endif
-
 // if RESET_SWITCH_CH is not zero, then this is the PWM value on
 // that channel where we reset the control mode to the current switch
 // position (to for example return to switched mode after failsafe or
@@ -224,4 +172,16 @@
 
 #ifndef ADVANCED_FAILSAFE
   #define ADVANCED_FAILSAFE DISABLED
+#endif
+
+#ifndef STATS_ENABLED
+ # define STATS_ENABLED ENABLED
+#endif
+
+#ifndef DEVO_TELEM_ENABLED
+#if HAL_MINIMIZE_FEATURES
+ #define DEVO_TELEM_ENABLED DISABLED
+#else
+ #define DEVO_TELEM_ENABLED ENABLED
+#endif
 #endif

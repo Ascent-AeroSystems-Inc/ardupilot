@@ -58,12 +58,24 @@ public:
     void     resume_timer_procs();
     void     reboot(bool hold_in_bootloader);
 
-    bool     in_timerprocess();
+    bool     in_main_thread() const override;
     void     system_initialized();
     void     hal_initialized() { _hal_initialized = true; }
 
     void create_uavcan_thread() override;
 
+    /*
+      disable interrupts and return a context that can be used to
+      restore the interrupt state. This can be used to protect
+      critical regions
+     */
+    void *disable_interrupts_save(void) override;
+
+    /*
+      restore interrupt state from disable_interrupts_save()
+     */
+    void restore_interrupts(void *) override;
+    
 private:
     bool _initialized;
     volatile bool _hal_initialized;

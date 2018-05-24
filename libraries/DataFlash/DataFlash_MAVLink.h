@@ -54,14 +54,6 @@ public:
     void get_log_info(uint16_t log_num, uint32_t &size, uint32_t &time_utc) override {}
     int16_t get_log_data(uint16_t log_num, uint16_t page, uint32_t offset, uint16_t len, uint8_t *data) override { return 0; }
     uint16_t get_num_logs(void) override { return 0; }
-    
-    void LogReadProcess(uint16_t log_num,
-                        uint16_t start_page, uint16_t end_page, 
-                        print_mode_fn printMode,
-                        AP_HAL::BetterStream *port) override {}
-    void DumpPageInfo(AP_HAL::BetterStream *port) override {}
-    void ShowDeviceInfo(AP_HAL::BetterStream *port) override {}
-    void ListAvailableLogs(AP_HAL::BetterStream *port) override {}
 
     void push_log_blocks() override;
 
@@ -150,8 +142,7 @@ private:
     bool _sending_to_client;
 
     void Log_Write_DF_MAV(DataFlash_MAVLink &df);
-    
-    void internal_error();
+
     uint32_t bufferspace_available() override; // in bytes
     uint8_t remaining_space_in_current_block();
     // write buffer
