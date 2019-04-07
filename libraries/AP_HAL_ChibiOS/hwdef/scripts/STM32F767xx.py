@@ -10,6 +10,37 @@ build = {
     "CHIBIOS_PLATFORM_MK" : "os/hal/ports/STM32/STM32F7xx/platform.mk"
     }
 
+pincount = {
+    'A': 16,
+    'B': 16,
+    'C': 16,
+    'D': 16,
+    'E': 16,
+    'F': 16,
+    'G': 16,
+    'H': 16,
+    'I': 16,
+    'J': 0,
+    'K': 0
+}
+
+
+# MCU parameters
+mcu = {
+    # location of MCU serial number
+    'UDID_START' : 0x1FF0F420,
+
+    # ram map, as list of (address, size-kb, flags)
+    # flags of 1 means DMA-capable
+    # flags of 2 means faster memory for CPU intensive work
+    'RAM_MAP' : [
+        (0x20020000, 384, 0), # SRAM1/SRAM2
+        # split DTCM in two to allow for fast checking of IS_DMA_SAFE in bouncebuffer code
+        (0x20000000,  64, 1), # DTCM, DMA safe
+        (0x20010000,  64, 2), # DTCM, 2nd half, used as fast memory. This lowers memory contention in the EKF code
+    ]
+}
+
 DMA_Map = {
 	# format is (DMA_TABLE, StreamNum, Channel)
 	"ADC1"    	:	[(2,0,0),(2,4,0)],
@@ -31,8 +62,8 @@ DMA_Map = {
 	"I2C2_TX" 	:	[(1,7,7),(1,4,8)],
 	"I2C3_RX" 	:	[(1,2,3),(1,1,1)],
 	"I2C3_TX" 	:	[(1,4,3),(1,0,8)],
-	"I2C4_RX" 	:	[(1,1,8),(1,2,2),(1,5,2)],
-	"I2C4_TX" 	:	[(1,6,8)],
+	"I2C4_RX"    	:	[(1,2,2),(1,1,8)],
+	"I2C4_TX" 	:	[(1,6,8),(1,5,2)],
 	"JPEG_IN" 	:	[(2,0,9),(2,3,9)],
 	"JPEG_OUT" 	:	[(2,1,9),(2,4,9)],
 	"QUADSPI" 	:	[(2,2,11),(2,7,3)],
@@ -771,7 +802,7 @@ AltFunction_map = {
 	"PF13:DFSDM1_DATAIN6"  	:	6,
 	"PF14:EVENTOUT"     	:	15,
 	"PF14:FMC_A8"       	:	12,
-	"PF14:I2C4_SCK"     	:	4,
+	"PF14:I2C4_SCL"     	:	4,
 	"PF14:DFSDM1_CKIN6"  	:	6,
 	"PF15:EVENTOUT"     	:	15,
 	"PF15:FMC_A9"       	:	12,
@@ -986,7 +1017,7 @@ AltFunction_map = {
 	"PH9:I2C3_SMBA"     	:	4,
 	"PH9:LCD_R3"        	:	14,
 	"PH9:TIM12_CH2"     	:	9,
-	"PI0:TIMTIM5_CH4"     	:	2,
+	"PI0:TIM5_CH4"     	:	2,
 	"PI0:SPI2_NSS"     	:	5,
 	"PI0:I2S2_WS"     	:	5,
 	"PI0:FMC_D24"     	:	12,

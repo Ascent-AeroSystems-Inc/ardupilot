@@ -10,6 +10,20 @@ build = {
     "CHIBIOS_PLATFORM_MK" : "os/hal/ports/STM32/STM32F4xx/platform.mk"
     }
 
+# MCU parameters
+mcu = {
+    # location of MCU serial number
+    'UDID_START' : 0x1FFF7A10,
+
+    # ram map, as list of (address, size-kb, flags)
+    # flags of 1 means DMA-capable
+    # flags of 2 means faster memory for CPU intensive work
+    'RAM_MAP' : [
+        (0x20000000, 128, 1), # main memory, DMA safe
+        (0x10000000,  64, 2), # CCM memory, faster, but not DMA safe
+    ]
+}
+
 AltFunction_map = {
 	# format is PIN:FUNCTION : AFNUM
 	# extracted from tabula-AF-F405.csv
@@ -366,7 +380,7 @@ AltFunction_map = {
 	"PE14:TIM1_CH4"     	:	1,
 	"PE15:TIM1_BKIN"    	:	1,
 	"PE15:FSMC_D12"    	:	12,
-	"PE15:EVENTOUT"    	:	1,
+	"PE15:EVENTOUT"    	:	15,
 	"PE1:DCMI_D3"       	:	13,
 	"PE1:EVENTOUT"      	:	15,
 	"PE1:FSMC_NBL1"     	:	12,

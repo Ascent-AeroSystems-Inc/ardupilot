@@ -20,7 +20,7 @@ static AP_SerialManager serial_manager;
 
 class DummyVehicle {
 public:
-    RangeFinder rangefinder{serial_manager, ROTATION_PITCH_270};
+    RangeFinder rangefinder{serial_manager};
     NavEKF2 EKF2{&ahrs, rangefinder};
     NavEKF3 EKF3{&ahrs, rangefinder};
     AP_AHRS_NavEKF ahrs{EKF2, EKF3, AP_AHRS_NavEKF::FLAG_ALWAYS_USE_EKF};
@@ -110,7 +110,7 @@ void check_path(const std::vector<Vector3f>& correct_path, const char* test_name
     }
 
     // display overall results
-    hal.console->printf("%s: %s time:%u us\n", test_name, (num_points_match && points_match) ? "success" : "fail", time_us);
+    hal.console->printf("%s: %s time:%u us\n", test_name, (num_points_match && points_match) ? "success" : "fail", (unsigned)time_us);
 
     // display number of points
     hal.console->printf("   expected %u points, got %u\n", (unsigned)correct_path.size(), (unsigned)smart_rtl.get_num_points());

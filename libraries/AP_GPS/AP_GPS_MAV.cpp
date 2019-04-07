@@ -22,7 +22,6 @@
 AP_GPS_MAV::AP_GPS_MAV(AP_GPS &_gps, AP_GPS::GPS_State &_state, AP_HAL::UARTDriver *_port) :
     AP_GPS_Backend(_gps, _state, _port)
 {
-    _new_data = false;
 }
 
 // Reading does nothing in this class; we simply return whether or not
@@ -68,7 +67,6 @@ void AP_GPS_MAV::handle_msg(const mavlink_message_t *msg)
                 loc.alt = packet.alt * 100; // convert to centimeters
             }
             state.location = loc;
-            state.location.options = 0;
 
             if (have_hdop) {
                 state.hdop = packet.hdop * 100; // convert to centimeters
@@ -124,7 +122,6 @@ void AP_GPS_MAV::handle_msg(const mavlink_message_t *msg)
             loc.lng = packet.lon;
             loc.alt = packet.alt * 0.1f;
             state.location = loc;
-            state.location.options = 0;
             state.hdop = MIN(packet.eph, GPS_UNKNOWN_DOP);
             state.vdop = MIN(packet.epv, GPS_UNKNOWN_DOP);
             if (packet.vel < 65535) {

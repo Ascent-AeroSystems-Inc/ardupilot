@@ -59,6 +59,15 @@
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
+// Advanced Failsafe support
+//
+
+#ifndef ADVANCED_FAILSAFE
+ # define ADVANCED_FAILSAFE ENABLED
+#endif
+
+
+//////////////////////////////////////////////////////////////////////////////
 // Optical flow sensor support
 //
 
@@ -104,22 +113,22 @@
 #endif
 
 #if !defined(FLIGHT_MODE_1)
- # define FLIGHT_MODE_1                  RTL
+ # define FLIGHT_MODE_1                  Mode::Number::RTL
 #endif
 #if !defined(FLIGHT_MODE_2)
- # define FLIGHT_MODE_2                  RTL
+ # define FLIGHT_MODE_2                  Mode::Number::RTL
 #endif
 #if !defined(FLIGHT_MODE_3)
- # define FLIGHT_MODE_3                  FLY_BY_WIRE_A
+ # define FLIGHT_MODE_3                  Mode::Number::FLY_BY_WIRE_A
 #endif
 #if !defined(FLIGHT_MODE_4)
- # define FLIGHT_MODE_4                  FLY_BY_WIRE_A
+ # define FLIGHT_MODE_4                  Mode::Number::FLY_BY_WIRE_A
 #endif
 #if !defined(FLIGHT_MODE_5)
- # define FLIGHT_MODE_5                  MANUAL
+ # define FLIGHT_MODE_5                  Mode::Number::MANUAL
 #endif
 #if !defined(FLIGHT_MODE_6)
- # define FLIGHT_MODE_6                  MANUAL
+ # define FLIGHT_MODE_6                  Mode::Number::MANUAL
 #endif
 
 
@@ -262,7 +271,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////
-// Dataflash logging control
+// Logging control
 //
 
 #ifndef LOGGING_ENABLED
@@ -290,14 +299,6 @@
 
 #ifndef USE_CURRENT_ALT
  # define USE_CURRENT_ALT FALSE
-#endif
-
-#ifndef INVERTED_FLIGHT_PWM
- # define INVERTED_FLIGHT_PWM 1750
-#endif
-
-#ifndef PX4IO_OVERRIDE_PWM
- # define PX4IO_OVERRIDE_PWM 1750
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -356,12 +357,6 @@
  #endif
 #endif
 
-#if CONFIG_HAL_BOARD == HAL_BOARD_PX4 && !defined(CONFIG_ARCH_BOARD_PX4FMU_V4)
-# define HAVE_PX4_MIXER 1
-#else
-# define HAVE_PX4_MIXER 0
-#endif
-
 #ifndef STATS_ENABLED
  # define STATS_ENABLED ENABLED
 #endif
@@ -372,4 +367,20 @@
 #else
  #define DEVO_TELEM_ENABLED ENABLED
 #endif
+#endif
+
+#ifndef OSD_ENABLED
+ #define OSD_ENABLED DISABLED
+#endif
+
+#ifndef SOARING_ENABLED
+#if HAL_MINIMIZE_FEATURES
+ #define SOARING_ENABLED DISABLED
+#else
+ #define SOARING_ENABLED ENABLED
+#endif
+#endif
+
+#ifndef LANDING_GEAR_ENABLED
+ #define LANDING_GEAR_ENABLED !HAL_MINIMIZE_FEATURES
 #endif

@@ -212,6 +212,8 @@ void AP_Avoidance::add_obstacle(const uint32_t obstacle_timestamp_ms,
             oldest_index = i;
         }
     }
+    WITH_SEMAPHORE(_rsem);
+    
     if (index == -1) {
         // existing obstacle not found.  See if we can store it anyway:
         if (i <_obstacles_allocated) {
@@ -312,9 +314,9 @@ float closest_approach_z(const Location &my_loc,
     if (delta_pos_d >= 0 && delta_vel_d >= 0) {
         ret = delta_pos_d;
     } else if (delta_pos_d <= 0 && delta_vel_d <= 0) {
-        ret = fabs(delta_pos_d);
+        ret = fabsf(delta_pos_d);
     } else {
-        ret = fabs(delta_pos_d - delta_vel_d * time_horizon);
+        ret = fabsf(delta_pos_d - delta_vel_d * time_horizon);
     }
 
     debug("   time_horizon: (%d)", time_horizon);
@@ -369,7 +371,7 @@ void AP_Avoidance::update_threat_level(const Location &my_loc,
     // level is none - but only *once the GCS has been informed*!
     obstacle.closest_approach_xy = closest_xy;
     obstacle.closest_approach_z = closest_z;
-    float current_distance = get_distance(my_loc, obstacle_loc);
+    float current_distance = my_loc.get_distance(obstacle_loc);
     obstacle.distance_to_closest_approach = current_distance - closest_xy;
     Vector2f net_velocity_ne = Vector2f(my_vel[0] - obstacle_vel[0], my_vel[1] - obstacle_vel[1]);
     obstacle.time_to_closest_approach = 0.0f;
@@ -575,12 +577,12 @@ void AP_Avoidance::handle_msg(const mavlink_message_t &msg)
     loc.lat = packet.lat;
     loc.lng = packet.lon;
     loc.alt = packet.alt / 10; // mm -> cm
-    loc.flags.relative_alt = false;
+    loc.relative_alt = false;
     Vector3f vel = Vector3f(packet.vx/100.0f, // cm to m
                             packet.vy/100.0f,
                             packet.vz/100.0f);
     add_obstacle(AP_HAL::millis(),
-                 MAV_COLLISION_SRC_ADSB,
+                 MAV_COLLISION_SRC_MAVLINK_GPS_GLOBAL_INT,
                  msg.sysid,
                  loc,
                  vel);

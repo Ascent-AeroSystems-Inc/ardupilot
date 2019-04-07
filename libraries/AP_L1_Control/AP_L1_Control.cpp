@@ -12,7 +12,7 @@ const AP_Param::GroupInfo AP_L1_Control::var_info[] = {
     // @Range: 1 60
     // @Increment: 1
     // @User: Standard
-    AP_GROUPINFO("PERIOD",    0, AP_L1_Control, _L1_period, 20),
+    AP_GROUPINFO("PERIOD",    0, AP_L1_Control, _L1_period, 17),
 
     // @Param: DAMPING
     // @DisplayName: L1 control damping ratio
@@ -224,7 +224,7 @@ void AP_L1_Control::update_waypoint(const struct Location &prev_WP, const struct
     Vector2f _groundspeed_vector = _ahrs.groundspeed_vector();
 
     // update _target_bearing_cd
-    _target_bearing_cd = get_bearing_cd(_current_loc, next_WP);
+    _target_bearing_cd = _current_loc.get_bearing_to(next_WP);
 
     //Calculate groundspeed
     float groundSpeed = _groundspeed_vector.length();
@@ -336,7 +336,7 @@ void AP_L1_Control::update_loiter(const struct Location &center_WP, float radius
 
     // scale loiter radius with square of EAS2TAS to allow us to stay
     // stable at high altitude
-    radius = loiter_radius(radius);
+    radius = loiter_radius(fabsf(radius));
 
     // Calculate guidance gains used by PD loop (used during circle tracking)
     float omega = (6.2832f / _L1_period);
@@ -360,7 +360,7 @@ void AP_L1_Control::update_loiter(const struct Location &center_WP, float radius
 
 
     // update _target_bearing_cd
-    _target_bearing_cd = get_bearing_cd(_current_loc, center_WP);
+    _target_bearing_cd = _current_loc.get_bearing_to(center_WP);
 
 
     // Calculate time varying control parameters

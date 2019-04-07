@@ -1,5 +1,7 @@
 #include "Copter.h"
 
+#if MODE_SPORT_ENABLED == ENABLED
+
 /*
  * Init and run calls for sport flight mode
  */
@@ -8,8 +10,8 @@
 bool Copter::ModeSport::init(bool ignore_checks)
 {
     // initialize vertical speed and acceleration
-    pos_control->set_speed_z(-get_pilot_speed_dn(), g.pilot_speed_up);
-    pos_control->set_accel_z(g.pilot_accel_z);
+    pos_control->set_max_speed_z(-get_pilot_speed_dn(), g.pilot_speed_up);
+    pos_control->set_max_accel_z(g.pilot_accel_z);
 
     // initialise position and desired velocity
     if (!pos_control->is_active_z()) {
@@ -28,8 +30,8 @@ void Copter::ModeSport::run()
     float takeoff_climb_rate = 0.0f;
 
     // initialize vertical speed and acceleration
-    pos_control->set_speed_z(-get_pilot_speed_dn(), g.pilot_speed_up);
-    pos_control->set_accel_z(g.pilot_accel_z);
+    pos_control->set_max_speed_z(-get_pilot_speed_dn(), g.pilot_speed_up);
+    pos_control->set_max_accel_z(g.pilot_accel_z);
 
     // apply SIMPLE mode transform
     update_simple_mode();
@@ -51,17 +53,17 @@ void Copter::ModeSport::run()
     int32_t pitch_angle = wrap_180_cd(att_target.y);
     target_pitch_rate -= constrain_int32(pitch_angle, -ACRO_LEVEL_MAX_ANGLE, ACRO_LEVEL_MAX_ANGLE) * g.acro_balance_pitch;
 
-    AP_Vehicle::MultiCopter &aparm = copter.aparm;
-    if (roll_angle > aparm.angle_max){
-        target_roll_rate -=  g.acro_rp_p*(roll_angle-aparm.angle_max);
-    }else if (roll_angle < -aparm.angle_max) {
-        target_roll_rate -=  g.acro_rp_p*(roll_angle+aparm.angle_max);
+    const float angle_max = copter.aparm.angle_max;
+    if (roll_angle > angle_max){
+        target_roll_rate -=  g.acro_rp_p*(roll_angle-angle_max);
+    }else if (roll_angle < -angle_max) {
+        target_roll_rate -=  g.acro_rp_p*(roll_angle+angle_max);
     }
 
-    if (pitch_angle > aparm.angle_max){
-        target_pitch_rate -=  g.acro_rp_p*(pitch_angle-aparm.angle_max);
-    }else if (pitch_angle < -aparm.angle_max) {
-        target_pitch_rate -=  g.acro_rp_p*(pitch_angle+aparm.angle_max);
+    if (pitch_angle > angle_max){
+        target_pitch_rate -=  g.acro_rp_p*(pitch_angle-angle_max);
+    }else if (pitch_angle < -angle_max) {
+        target_pitch_rate -=  g.acro_rp_p*(pitch_angle+angle_max);
     }
 
     // get pilot's desired yaw rate
@@ -74,7 +76,7 @@ void Copter::ModeSport::run()
     // State Machine Determination
     if (!motors->armed() || !motors->get_interlock()) {
         sport_state = Sport_MotorStopped;
-    } else if (takeoff_state.running || takeoff_triggered(target_climb_rate)) {
+    } else if (takeoff.running() || takeoff.triggered(target_climb_rate)) {
         sport_state = Sport_Takeoff;
     } else if (!ap.auto_armed || ap.land_complete) {
         sport_state = Sport_Landed;
@@ -106,8 +108,8 @@ void Copter::ModeSport::run()
         motors->set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
 
         // initiate take-off
-        if (!takeoff_state.running) {
-            takeoff_timer_start(constrain_float(g.pilot_takeoff_alt,0.0f,1000.0f));
+        if (!takeoff.running()) {
+            takeoff.start(constrain_float(g.pilot_takeoff_alt,0.0f,1000.0f));
             // indicate we are taking off
             set_land_complete(false);
             // clear i terms
@@ -115,7 +117,7 @@ void Copter::ModeSport::run()
         }
 
         // get take-off adjusted pilot and takeoff climb rates
-        takeoff_get_climb_rates(target_climb_rate, takeoff_climb_rate);
+        takeoff.get_climb_rates(target_climb_rate, takeoff_climb_rate);
 
         // get avoidance adjusted climb rate
         target_climb_rate = get_avoidance_adjusted_climbrate(target_climb_rate);
@@ -130,13 +132,17 @@ void Copter::ModeSport::run()
         break;
 
     case Sport_Landed:
+#if FRAME_CONFIG == HELI_FRAME
+        // helicopters do not spool down when landed.  Only when commanded to go to ground idle by pilot.
+        motors->set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
+#else
         // set motors to spin-when-armed if throttle below deadzone, otherwise full range (but motors will only spin at min throttle)
         if (target_climb_rate < 0.0f) {
-            motors->set_desired_spool_state(AP_Motors::DESIRED_SPIN_WHEN_ARMED);
+            motors->set_desired_spool_state(AP_Motors::DESIRED_GROUND_IDLE);
         } else {
             motors->set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
         }
-
+#endif
         attitude_control->reset_rate_controller_I_terms();
         attitude_control->set_yaw_target_to_current_heading();
         attitude_control->input_euler_rate_roll_pitch_yaw(target_roll_rate, target_pitch_rate, target_yaw_rate);
@@ -150,10 +156,7 @@ void Copter::ModeSport::run()
         attitude_control->input_euler_rate_roll_pitch_yaw(target_roll_rate, target_pitch_rate, target_yaw_rate);
 
         // adjust climb rate using rangefinder
-        if (copter.rangefinder_alt_ok()) {
-            // if rangefinder is ok, use surface tracking
-            target_climb_rate = get_surface_tracking_climb_rate(target_climb_rate, pos_control->get_alt_target(), G_Dt);
-        }
+        target_climb_rate = get_surface_tracking_climb_rate(target_climb_rate, pos_control->get_alt_target(), G_Dt);
 
         // get avoidance adjusted climb rate
         target_climb_rate = get_avoidance_adjusted_climbrate(target_climb_rate);
@@ -164,3 +167,5 @@ void Copter::ModeSport::run()
         break;
     }
 }
+
+#endif

@@ -17,14 +17,18 @@
 #include <AP_Common/AP_Common.h>
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Param/AP_Param.h>
-#include <AP_Math/AP_Math.h>
 #include <AP_SerialManager/AP_SerialManager.h>
+#include "AP_RangeFinder_Params.h"
 
 // Maximum number of range finder instances available on this platform
-#define RANGEFINDER_MAX_INSTANCES 2
+#define RANGEFINDER_MAX_INSTANCES 10
 #define RANGEFINDER_GROUND_CLEARANCE_CM_DEFAULT 10
 #define RANGEFINDER_PREARM_ALT_MAX_CM           200
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
+#define RANGEFINDER_PREARM_REQUIRED_CHANGE_CM   0
+#else
 #define RANGEFINDER_PREARM_REQUIRED_CHANGE_CM   50
+#endif
 
 class AP_RangeFinder_Backend;
 
@@ -33,7 +37,7 @@ class RangeFinder
     friend class AP_RangeFinder_Backend;
 
 public:
-    RangeFinder(AP_SerialManager &_serial_manager, enum Rotation orientation_default);
+    RangeFinder(AP_SerialManager &_serial_manager);
 
     /* Do not allow copies */
     RangeFinder(const RangeFinder &other) = delete;
@@ -57,7 +61,13 @@ public:
         RangeFinder_TYPE_MBSER  = 13,
         RangeFinder_TYPE_TRI2C  = 14,
         RangeFinder_TYPE_PLI2CV3= 15,
-        RangeFinder_TYPE_VL53L0X = 16
+        RangeFinder_TYPE_VL53L0X = 16,
+        RangeFinder_TYPE_NMEA = 17,
+        RangeFinder_TYPE_WASP = 18,
+        RangeFinder_TYPE_BenewakeTF02 = 19,
+        RangeFinder_TYPE_BenewakeTFmini = 20,
+        RangeFinder_TYPE_PLI2CV3HP = 21,
+        RangeFinder_TYPE_PWM = 22,
     };
 
     enum RangeFinder_Function {
@@ -76,33 +86,19 @@ public:
 
     // The RangeFinder_State structure is filled in by the backend driver
     struct RangeFinder_State {
-        uint8_t                instance;    // the instance number of this RangeFinder
-        uint16_t               distance_cm; // distance: in cm
-        uint16_t               voltage_mv;  // voltage in millivolts,
-                                            // if applicable, otherwise 0
-        enum RangeFinder_Status status;     // sensor status
-        uint8_t                range_valid_count;   // number of consecutive valid readings (maxes out at 10)
-        bool                   pre_arm_check;   // true if sensor has passed pre-arm checks
-        uint16_t               pre_arm_distance_min;    // min distance captured during pre-arm checks
-        uint16_t               pre_arm_distance_max;    // max distance captured during pre-arm checks
+        uint16_t distance_cm;           // distance: in cm
+        uint16_t voltage_mv;            // voltage in millivolts, if applicable, otherwise 0
+        enum RangeFinder_Status status; // sensor status
+        uint8_t  range_valid_count;     // number of consecutive valid readings (maxes out at 10)
+        bool     pre_arm_check;         // true if sensor has passed pre-arm checks
+        uint16_t pre_arm_distance_min;  // min distance captured during pre-arm checks
+        uint16_t pre_arm_distance_max;  // max distance captured during pre-arm checks
+        uint32_t last_reading_ms;       // system time of last successful update from sensor
 
-        AP_Int8  type;
-        AP_Int8  pin;
-        AP_Int8  ratiometric;
-        AP_Int8  stop_pin;
-        AP_Int16 settle_time_ms;
-        AP_Float scaling;
-        AP_Float offset;
-        AP_Int8  function;
-        AP_Int16 min_distance_cm;
-        AP_Int16 max_distance_cm;
-        AP_Int8  ground_clearance_cm;
-        AP_Int8  address;
-        AP_Vector3f pos_offset; // position offset in body frame
-        AP_Int8  orientation;
+        const struct AP_Param::GroupInfo *var_info;
     };
 
-    AP_Int16 _powersave_range;
+    static const struct AP_Param::GroupInfo *backend_var_info[RANGEFINDER_MAX_INSTANCES];
 
     // parameters for each instance
     static const struct AP_Param::GroupInfo var_info[];
@@ -113,7 +109,7 @@ public:
     }
 
     // detect and initialise any available rangefinders
-    void init(void);
+    void init(enum Rotation orientation_default);
 
     // update state of all rangefinders. Should be called at around
     // 10Hz from main loop
@@ -142,6 +138,7 @@ public:
     bool has_data_orient(enum Rotation orientation) const;
     uint8_t range_valid_count_orient(enum Rotation orientation) const;
     const Vector3f &get_pos_offset_orient(enum Rotation orientation) const;
+    uint32_t last_reading_ms(enum Rotation orientation) const;
 
     /*
       set an externally estimated terrain height. Used to enable power
@@ -158,14 +155,22 @@ public:
      */
     bool pre_arm_check() const;
 
+    static RangeFinder *get_singleton(void) { return _singleton; }
+
+protected:
+    AP_RangeFinder_Params params[RANGEFINDER_MAX_INSTANCES];
 
 private:
+    static RangeFinder *_singleton;
+
     RangeFinder_State state[RANGEFINDER_MAX_INSTANCES];
     AP_RangeFinder_Backend *drivers[RANGEFINDER_MAX_INSTANCES];
-    uint8_t num_instances:3;
+    uint8_t num_instances;
     float estimated_terrain_height;
     AP_SerialManager &serial_manager;
     Vector3f pos_offset_zero;   // allows returning position offsets of zero for invalid requests
+
+    void convert_params(void);
 
     void detect_instance(uint8_t instance, uint8_t& serial_instance);
     void update_instance(uint8_t instance);  

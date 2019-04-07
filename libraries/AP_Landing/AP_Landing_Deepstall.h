@@ -20,7 +20,6 @@
 #include <AP_Common/AP_Common.h>
 #include <AP_SpdHgtControl/AP_SpdHgtControl.h>
 #include <AP_Navigation/AP_Navigation.h>
-#include <GCS_MAVLink/GCS.h>
 #include <PID/PID.h>
 
 class AP_Landing;
@@ -105,11 +104,11 @@ private:
     bool is_flying_forward(void) const;
     bool is_on_approach(void) const;
     bool terminate(void);
-    void log(void) const;
+    void Log(void) const;
 
     bool send_deepstall_message(mavlink_channel_t chan) const;
 
-    const DataFlash_Class::PID_Info& get_pid_info(void) const;
+    const AP_Logger::PID_Info& get_pid_info(void) const;
 
     //private helpers
     void build_approach_path(bool use_current_heading);

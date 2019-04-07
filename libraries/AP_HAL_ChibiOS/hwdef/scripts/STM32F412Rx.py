@@ -10,6 +10,19 @@ build = {
     "CHIBIOS_PLATFORM_MK" : "os/hal/ports/STM32/STM32F4xx/platform.mk"
 }
 
+# MCU parameters
+mcu = {
+    # location of MCU serial number
+    'UDID_START' : 0x1FFF7A10,
+
+    # ram map, as list of (address, size-kb, flags)
+    # flags of 1 means DMA-capable
+    # flags of 2 means faster memory for CPU intensive work
+    'RAM_MAP' : [
+        (0x20000000, 256, 1), # main memory, DMA safe
+    ]
+}
+
 DMA_Map = {
 	# format is (DMA_TABLE, StreamNum, Channel)
 	# extracted from tabula-stm32f412-ref-manual-196.csv

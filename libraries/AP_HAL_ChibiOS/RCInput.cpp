@@ -25,6 +25,12 @@
 extern AP_IOMCU iomcu;
 #endif
 
+#include <AP_Math/AP_Math.h>
+
+#ifndef HAL_NO_UARTDRIVER
+#include <GCS_MAVLink/GCS.h>
+#endif
+
 #define SIG_DETECT_TIMEOUT_US 500000
 using namespace ChibiOS;
 extern const AP_HAL::HAL& hal;
@@ -54,18 +60,13 @@ bool RCInput::new_input()
     }
     bool valid = _rcin_timestamp_last_signal != _last_read;
 
-    if (_override_valid) {
-        // if we have RC overrides active, then always consider it valid
-        valid = true;
-    }
     _last_read = _rcin_timestamp_last_signal;
-    _override_valid = false;
     rcin_mutex.give();
 
-#ifdef HAL_RCINPUT_WITH_AP_RADIO
+#if HAL_RCINPUT_WITH_AP_RADIO
     if (!_radio_init) {
         _radio_init = true;
-        radio = AP_Radio::instance();
+        radio = AP_Radio::get_singleton();
         if (radio) {
             radio->init();
         }
@@ -84,25 +85,13 @@ uint8_t RCInput::num_channels()
 
 uint16_t RCInput::read(uint8_t channel)
 {
-    if (!_init) {
-        return 0;
-    }
-    if (channel >= RC_INPUT_MAX_CHANNELS) {
+    if (!_init || (channel >= MIN(RC_INPUT_MAX_CHANNELS, _num_channels))) {
         return 0;
     }
     rcin_mutex.take(HAL_SEMAPHORE_BLOCK_FOREVER);
-    if (_override[channel]) {
-        uint16_t v = _override[channel];
-        rcin_mutex.give();
-        return v;
-    }
-    if (channel >=  _num_channels) {
-        rcin_mutex.give();
-        return 0;
-    }
     uint16_t v = _rc_values[channel];
     rcin_mutex.give();
-#ifdef HAL_RCINPUT_WITH_AP_RADIO
+#if HAL_RCINPUT_WITH_AP_RADIO
     if (radio && channel == 0) {
         // hook to allow for update of radio on main thread, for mavlink sends
         radio->update();
@@ -126,76 +115,55 @@ uint8_t RCInput::read(uint16_t* periods, uint8_t len)
     return len;
 }
 
-bool RCInput::set_overrides(int16_t *overrides, uint8_t len)
-{
-    if (!_init) {
-        return false;
-    }
-
-    bool res = false;
-    for (uint8_t i = 0; i < len; i++) {
-        res |= set_override(i, overrides[i]);
-    }
-    return res;
-}
-
-bool RCInput::set_override(uint8_t channel, int16_t override)
-{
-    if (!_init) {
-        return false;
-    }
-
-    if (override < 0) {
-        return false; /* -1: no change. */
-    }
-    if (channel >= RC_INPUT_MAX_CHANNELS) {
-        return false;
-    }
-    _override[channel] = override;
-    if (override != 0) {
-        _override_valid = true;
-        return true;
-    }
-    return false;
-}
-
-void RCInput::clear_overrides()
-{
-    for (uint8_t i = 0; i < RC_INPUT_MAX_CHANNELS; i++) {
-        set_override(i, 0);
-    }
-}
-
-
 void RCInput::_timer_tick(void)
 {
     if (!_init) {
         return;
     }
-#if HAL_USE_ICU == TRUE || HAL_USE_EICU == TRUE
-    uint32_t width_s0, width_s1;
 
+#if HAL_USE_ICU == TRUE
+    const uint32_t *p;
+    uint32_t n;
+    while ((p = (const uint32_t *)sig_reader.sigbuf.readptr(n)) != nullptr) {
+        rcin_prot.process_pulse_list(p, n*2, sig_reader.need_swap);
+        sig_reader.sigbuf.advance(n);
+    }
+#endif
+
+#if HAL_USE_EICU == TRUE
+    uint32_t width_s0, width_s1;
     while(sig_reader.read(width_s0, width_s1)) {
         rcin_prot.process_pulse(width_s0, width_s1);
     }
+#endif
 
+#ifndef HAL_NO_UARTDRIVER
+    const char *rc_protocol = nullptr;
+#endif
+
+#if HAL_USE_ICU == TRUE || HAL_USE_EICU == TRUE
     if (rcin_prot.new_input()) {
         rcin_mutex.take(HAL_SEMAPHORE_BLOCK_FOREVER);
         _rcin_timestamp_last_signal = AP_HAL::micros();
         _num_channels = rcin_prot.num_channels();
+        _num_channels = MIN(_num_channels, RC_INPUT_MAX_CHANNELS);
         for (uint8_t i=0; i<_num_channels; i++) {
             _rc_values[i] = rcin_prot.read(i);
         }
         rcin_mutex.give();
+#ifndef HAL_NO_UARTDRIVER
+        rc_protocol = rcin_prot.protocol_name();
+#endif
     }
 #endif
 
-#ifdef HAL_RCINPUT_WITH_AP_RADIO
+#if HAL_RCINPUT_WITH_AP_RADIO
     if (radio && radio->last_recv_us() != last_radio_us) {
         last_radio_us = radio->last_recv_us();
         rcin_mutex.take(HAL_SEMAPHORE_BLOCK_FOREVER);
         _rcin_timestamp_last_signal = last_radio_us;
         _num_channels = radio->num_channels();
+        _num_channels = MIN(_num_channels, RC_INPUT_MAX_CHANNELS);
         for (uint8_t i=0; i<_num_channels; i++) {
             _rc_values[i] = radio->read(i);
         }
@@ -208,10 +176,19 @@ void RCInput::_timer_tick(void)
     if (AP_BoardConfig::io_enabled() &&
         iomcu.check_rcinput(last_iomcu_us, _num_channels, _rc_values, RC_INPUT_MAX_CHANNELS)) {
         _rcin_timestamp_last_signal = last_iomcu_us;
+#ifndef HAL_NO_UARTDRIVER
+        rc_protocol = iomcu.get_rc_protocol();
+#endif
     }
     rcin_mutex.give();
 #endif
-    
+
+#ifndef HAL_NO_UARTDRIVER
+    if (rc_protocol && rc_protocol != last_protocol) {
+        last_protocol = rc_protocol;
+        gcs().send_text(MAV_SEVERITY_DEBUG, "RCInput: decoding %s", last_protocol);
+    }
+#endif
 
     // note, we rely on the vehicle code checking new_input()
     // and a timeout for the last valid input to handle failsafe
@@ -222,12 +199,20 @@ void RCInput::_timer_tick(void)
  */
 bool RCInput::rc_bind(int dsmMode)
 {
+#if HAL_WITH_IO_MCU
+    rcin_mutex.take(HAL_SEMAPHORE_BLOCK_FOREVER);
+    if (AP_BoardConfig::io_enabled()) {
+        iomcu.bind_dsm(dsmMode);
+    }
+    rcin_mutex.give();
+#endif
+
 #if HAL_USE_ICU == TRUE
     // ask AP_RCProtocol to start a bind
     rcin_prot.start_bind();
 #endif
     
-#ifdef HAL_RCINPUT_WITH_AP_RADIO
+#if HAL_RCINPUT_WITH_AP_RADIO
     if (radio) {
         radio->start_recv_bind();
     }

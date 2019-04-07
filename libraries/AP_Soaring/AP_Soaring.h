@@ -11,7 +11,7 @@
 
 #include <AP_AHRS/AP_AHRS.h>
 #include <AP_Param/AP_Param.h>
-#include <DataFlash/DataFlash.h>
+#include <AP_Logger/AP_Logger.h>
 #include <AP_Math/AP_Math.h>
 #include "ExtendedKalmanFilter.h"
 #include "Variometer.h"
@@ -90,7 +90,7 @@ public:
     {
         _throttle_suppressed = suppressed;
     }
-    float get_vario_reading()
+    float get_vario_reading() const
     {
         return _vario.displayed_reading;
     }
