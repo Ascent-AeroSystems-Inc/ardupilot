@@ -22,6 +22,11 @@ extern const AP_HAL::HAL& hal;
 #define HAL_LOGGING_MAV_BUFSIZE  8
 #endif 
 
+// by default log for 15 seconds after disarming
+#ifndef HAL_LOGGER_ARM_PERSIST
+#define HAL_LOGGER_ARM_PERSIST 15
+#endif
+
 #ifndef HAL_LOGGING_BACKENDS_DEFAULT
 # ifdef HAL_LOGGING_DATAFLASH
 #  define HAL_LOGGING_BACKENDS_DEFAULT Backend_Type::BLOCK
@@ -92,6 +97,10 @@ AP_Logger::AP_Logger(const AP_Int32 &log_bitmask)
 void AP_Logger::Init(const struct LogStructure *structures, uint8_t num_types)
 {
     gcs().send_text(MAV_SEVERITY_INFO, "Preparing log system");
+    if (hal.util->was_watchdog_armed()) {
+        gcs().send_text(MAV_SEVERITY_INFO, "Forcing logging for watchdog reset");
+        _params.log_disarmed.set(1);
+    }
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
     validate_structures(structures, num_types);
     dump_structures(structures, num_types);
@@ -364,7 +373,7 @@ bool AP_Logger::validate_structure(const struct LogStructure *logstructure, cons
     }
 
     // ensure any float has a multiplier of zero
-    if (passed) {
+    if (false && passed) {
         for (uint8_t j=0; j<strlen(logstructure->multipliers); j++) {
             const char fmt = logstructure->format[j];
             if (fmt != 'f') {
@@ -391,6 +400,11 @@ void AP_Logger::validate_structures(const struct LogStructure *logstructures, co
 {
     Debug("Validating structures");
     bool passed = true;
+
+    for (uint16_t i=0; i<num_types; i++) {
+        const struct LogStructure *logstructure = &logstructures[i];
+        passed = validate_structure(logstructure, i) && passed;
+    }
 
     // ensure units are unique:
     for (uint16_t i=0; i<ARRAY_SIZE(log_Units); i++) {
@@ -500,10 +514,12 @@ void AP_Logger::backend_starting_new_log(const AP_Logger_Backend *backend)
 
 bool AP_Logger::should_log(const uint32_t mask) const
 {
+    bool armed = vehicle_is_armed();
+
     if (!(mask & _log_bitmask)) {
         return false;
     }
-    if (!vehicle_is_armed() && !log_while_disarmed()) {
+    if (!armed && !log_while_disarmed()) {
         return false;
     }
     if (in_log_download()) {
@@ -699,6 +715,11 @@ void AP_Logger::Write_RallyPoint(uint8_t total,
     FOR_EACH_BACKEND(Write_RallyPoint(total, sequence, rally_point));
 }
 
+void AP_Logger::Write_Rally()
+{
+    FOR_EACH_BACKEND(Write_Rally());
+}
+
 uint32_t AP_Logger::num_dropped() const
 {
     if (_next_backend == 0) {
@@ -729,7 +750,25 @@ void AP_Logger::Write(const char *name, const char *labels, const char *units, c
     va_end(arg_list);
 }
 
-void AP_Logger::WriteV(const char *name, const char *labels, const char *units, const char *mults, const char *fmt, va_list arg_list)
+void AP_Logger::WriteCritical(const char *name, const char *labels, const char *fmt, ...)
+{
+    va_list arg_list;
+
+    va_start(arg_list, fmt);
+    WriteV(name, labels, nullptr, nullptr, fmt, arg_list, true);
+    va_end(arg_list);
+}
+
+void AP_Logger::WriteCritical(const char *name, const char *labels, const char *units, const char *mults, const char *fmt, ...)
+{
+    va_list arg_list;
+
+    va_start(arg_list, fmt);
+    WriteV(name, labels, units, mults, fmt, arg_list, true);
+    va_end(arg_list);
+}
+
+void AP_Logger::WriteV(const char *name, const char *labels, const char *units, const char *mults, const char *fmt, va_list arg_list, bool is_critical)
 {
     struct log_write_fmt *f = msg_fmt_for_name(name, labels, units, mults, fmt);
     if (f == nullptr) {
@@ -748,7 +787,7 @@ void AP_Logger::WriteV(const char *name, const char *labels, const char *units, 
         }
         va_list arg_copy;
         va_copy(arg_copy, arg_list);
-        backends[i]->Write(f->msg_type, arg_copy);
+        backends[i]->Write(f->msg_type, arg_copy, is_critical);
         va_end(arg_copy);
     }
 }
@@ -1107,6 +1146,35 @@ void AP_Logger::Write_Error(LogErrorSubsystem sub_system,
       error_code    : uint8_t(error_code),
   };
   WriteCriticalBlock(&pkt, sizeof(pkt));
+}
+
+/*
+  return true if we should log while disarmed
+ */
+bool AP_Logger::log_while_disarmed(void) const
+{
+    if (_force_log_disarmed) {
+        return true;
+    }
+    if (_params.log_disarmed != 0) {
+        return true;
+    }
+
+    uint32_t now = AP_HAL::millis();
+    uint32_t persist_ms = HAL_LOGGER_ARM_PERSIST*1000U;
+
+    // keep logging for HAL_LOGGER_ARM_PERSIST seconds after disarming
+    const uint32_t arm_change_ms = hal.util->get_last_armed_change();
+    if (!hal.util->get_soft_armed() && arm_change_ms != 0 && now - arm_change_ms < persist_ms) {
+        return true;
+    }
+
+    // keep logging for HAL_LOGGER_ARM_PERSIST seconds after an arming failure
+    if (_last_arming_failure_ms && now - _last_arming_failure_ms < persist_ms) {
+        return true;
+    }
+
+    return false;
 }
 
 namespace AP {

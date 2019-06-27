@@ -134,7 +134,7 @@ const AP_Param::GroupInfo AP_GPS::var_info[] = {
     // @Description: Masked with the SBP msg_type field to determine whether SBR1/SBR2 data is logged
     // @Values: 0:None (0x0000),-1:All (0xFFFF),-256:External only (0xFF00)
     // @User: Advanced
-    AP_GROUPINFO("SBP_LOGMASK", 8, AP_GPS, _sbp_logmask, 0xFF00),
+    AP_GROUPINFO("SBP_LOGMASK", 8, AP_GPS, _sbp_logmask, -256),
 
     // @Param: RAW_DATA
     // @DisplayName: Raw data logging
@@ -965,8 +965,8 @@ void AP_GPS::send_mavlink_gps2_raw(mavlink_channel_t chan)
         ground_speed(1)*100,  // cm/s
         ground_course(1)*100, // 1/100 degrees,
         num_sats(1),
-        rtk_num_sats(1),
-        rtk_age_ms(1));
+        state[1].rtk_num_sats,
+        state[1].rtk_age_ms);
 }
 
 void AP_GPS::send_mavlink_gps_rtk(mavlink_channel_t chan, uint8_t inst)
@@ -1010,7 +1010,7 @@ bool AP_GPS::all_consistent(float &distance) const
     }
 
     // calculate distance
-    distance = location_3d_diff_NED(state[0].location, state[1].location).length();
+    distance = state[0].location.get_distance_NED(state[1].location).length();
     // success if distance is within 50m
     return (distance < 50);
 }
@@ -1443,7 +1443,7 @@ void AP_GPS::calc_blended_state(void)
     blended_NE_offset_m.zero();
     for (uint8_t i=0; i<GPS_MAX_RECEIVERS; i++) {
         if (_blend_weights[i] > 0.0f && i != best_index) {
-            blended_NE_offset_m += location_diff(state[GPS_BLENDED_INSTANCE].location, state[i].location) * _blend_weights[i];
+            blended_NE_offset_m += state[GPS_BLENDED_INSTANCE].location.get_distance_NE(state[i].location) * _blend_weights[i];
             blended_alt_offset_cm += (float)(state[i].location.alt - state[GPS_BLENDED_INSTANCE].location.alt) * _blend_weights[i];
         }
     }
@@ -1480,7 +1480,7 @@ void AP_GPS::calc_blended_state(void)
 
     // Calculate the offset from each GPS solution to the blended solution
     for (uint8_t i=0; i<GPS_MAX_RECEIVERS; i++) {
-        _NE_pos_offset_m[i] = location_diff(state[i].location, state[GPS_BLENDED_INSTANCE].location) * alpha[i] + _NE_pos_offset_m[i] * (1.0f - alpha[i]);
+        _NE_pos_offset_m[i] = state[i].location.get_distance_NE(state[GPS_BLENDED_INSTANCE].location) * alpha[i] + _NE_pos_offset_m[i] * (1.0f - alpha[i]);
         _hgt_offset_cm[i] = (float)(state[GPS_BLENDED_INSTANCE].location.alt - state[i].location.alt) *  alpha[i] + _hgt_offset_cm[i] * (1.0f - alpha[i]);
     }
 

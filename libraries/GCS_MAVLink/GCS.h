@@ -7,10 +7,8 @@
 #include <AP_Common/AP_Common.h>
 #include "GCS_MAVLink.h"
 #include <AP_Mission/AP_Mission.h>
-#include <AP_BattMonitor/AP_BattMonitor.h>
 #include <stdint.h>
 #include "MAVLink_routing.h"
-#include <AP_SerialManager/AP_SerialManager.h>
 #include <AP_Avoidance/AP_Avoidance.h>
 #include <AP_Frsky_Telem/AP_Frsky_Telem.h>
 #include <AP_AdvancedFailsafe/AP_AdvancedFailsafe.h>
@@ -18,6 +16,7 @@
 #include <AP_Common/Bitmask.h>
 #include <AP_Devo_Telem/AP_Devo_Telem.h>
 #include <RC_Channel/RC_Channel.h>
+#include <AP_Rally/AP_Rally.h>
 
 #define GCS_DEBUG_SEND_MESSAGE_TIMINGS 0
 
@@ -58,7 +57,8 @@ enum ap_message : uint8_t {
     MSG_GPS2_RTK,
     MSG_SYSTEM_TIME,
     MSG_SERVO_OUT,
-    MSG_NEXT_MISSION_REQUEST,
+    MSG_NEXT_MISSION_REQUEST_WAYPOINTS,
+    MSG_NEXT_MISSION_REQUEST_RALLY,
     MSG_NEXT_PARAM,
     MSG_FENCE_STATUS,
     MSG_AHRS,
@@ -107,6 +107,183 @@ enum ap_message : uint8_t {
     }
 #define MAV_STREAM_TERMINATOR { (streams)0, nullptr, 0 }
 
+// MissionItemProtocol objects are used for transfering missions from
+// a GCS to ArduPilot and vice-versa.
+//
+// There exists one MissionItemProtocol instance for each of the types
+// of item that might be transfered - e.g. MissionItemProtocol_Rally
+// for rally point uploads.  These objects are static in GCS_MAVLINK
+// and used by all of the backends.
+//
+// While prompting the GCS for items required to complete the mission,
+// a link is stored to the link the MissionItemProtocol should send
+// requests out on, and the "receiving" boolean is true.  In this
+// state downloading of items (and the item count!) is blocked.
+// Starting of uploads (for the same protocol) is also blocked -
+// essentially the GCS uploading a set of items (e.g. a mission) has a
+// mutex over the mission.
+class MissionItemProtocol
+{
+public:
+
+    // note that all of these methods are named after the packet they
+    // are handling; the "mission" part just comes as part of that.
+    void handle_mission_request_list(const GCS_MAVLINK &link,
+                                     const mavlink_mission_request_list_t &packet,
+                                     const mavlink_message_t &msg);
+    void handle_mission_request_int(const GCS_MAVLINK &link,
+                                    const mavlink_mission_request_int_t &packet,
+                                    const mavlink_message_t &msg);
+    void handle_mission_request(const GCS_MAVLINK &link,
+                                const mavlink_mission_request_t &packet,
+                                const mavlink_message_t &msg);
+
+    void handle_mission_count(class GCS_MAVLINK &link,
+                              const mavlink_mission_count_t &packet,
+                              const mavlink_message_t &msg);
+    void handle_mission_write_partial_list(GCS_MAVLINK &link,
+                                           const mavlink_message_t &msg,
+                                           const mavlink_mission_write_partial_list_t &packet);
+
+    // called on receipt of a MISSION_ITEM or MISSION_ITEM_INT packet;
+    // the former is converted to the latter.
+    void handle_mission_item(const mavlink_message_t &msg,
+                             const mavlink_mission_item_int_t &cmd);
+
+    void handle_mission_clear_all(const GCS_MAVLINK &link,
+                                  const mavlink_message_t &msg);
+
+    void queued_request_send();
+    void update();
+
+    bool active_link_is(const GCS_MAVLINK *_link) const { return _link == link; };
+
+    virtual MAV_MISSION_TYPE mission_type() const = 0;
+
+    bool receiving; // currently sending requests and expecting items
+
+protected:
+
+    GCS_MAVLINK *link; // link currently receiving waypoints on
+
+    // return the ap_message which can be queued to be sent to send a
+    // item request to the GCS:
+    virtual ap_message next_item_ap_message_id() const = 0;
+
+    virtual bool clear_all_items() = 0;
+
+    uint16_t        request_last; // last request index
+
+private:
+
+    virtual void truncate(const mavlink_mission_count_t &packet) = 0;
+
+    uint16_t        request_i; // request index
+
+    // waypoints
+    uint8_t         dest_sysid;  // where to send requests
+    uint8_t         dest_compid; // "
+    uint32_t        timelast_receive_ms;
+    uint32_t        timelast_request_ms;
+    const uint16_t  upload_timeout_ms = 8000;
+
+    // support for GCS getting waypoints etc from us:
+    virtual MAV_MISSION_RESULT get_item(const GCS_MAVLINK &_link,
+                                        const mavlink_message_t &msg,
+                                        const mavlink_mission_request_int_t &packet,
+                                        mavlink_mission_item_int_t &ret_packet) = 0;
+
+    void init_send_requests(GCS_MAVLINK &_link,
+                            const mavlink_message_t &msg,
+                            const int16_t _request_first,
+                            const int16_t _request_last);
+
+    void send_mission_ack(const mavlink_message_t &msg, MAV_MISSION_RESULT result) const;
+    void send_mission_ack(const GCS_MAVLINK &link, const mavlink_message_t &msg, MAV_MISSION_RESULT result) const;
+
+    virtual uint16_t item_count() const = 0;
+    virtual uint16_t max_items() const = 0;
+
+    virtual MAV_MISSION_RESULT replace_item(const mavlink_mission_item_int_t &mission_item_int) = 0;
+    virtual MAV_MISSION_RESULT append_item(const mavlink_mission_item_int_t &mission_item_int) = 0;
+
+    virtual void complete(const GCS_MAVLINK &_link) {};
+    virtual void timeout() {};
+
+    void convert_MISSION_REQUEST_to_MISSION_REQUEST_INT(const mavlink_mission_request_t &request,
+                                                        mavlink_mission_request_int_t &request_int);
+};
+
+class MissionItemProtocol_Waypoints : public MissionItemProtocol {
+public:
+    MissionItemProtocol_Waypoints(AP_Mission &_mission) :
+        mission(_mission) {}
+    void truncate(const mavlink_mission_count_t &packet) override;
+    MAV_MISSION_TYPE mission_type() const override { return MAV_MISSION_TYPE_MISSION; }
+
+    void complete(const GCS_MAVLINK &_link) override;
+    void timeout() override;
+
+protected:
+
+    bool clear_all_items() override WARN_IF_UNUSED;
+
+    ap_message next_item_ap_message_id() const override {
+        return MSG_NEXT_MISSION_REQUEST_WAYPOINTS;
+    }
+
+private:
+    AP_Mission &mission;
+
+    uint16_t item_count() const override { return mission.num_commands(); }
+    uint16_t max_items() const override { return mission.num_commands_max(); }
+
+    MAV_MISSION_RESULT replace_item(const mavlink_mission_item_int_t &) override WARN_IF_UNUSED;
+    MAV_MISSION_RESULT append_item(const mavlink_mission_item_int_t &) override WARN_IF_UNUSED;
+
+    MAV_MISSION_RESULT get_item(const GCS_MAVLINK &_link,
+                                const mavlink_message_t &msg,
+                                const mavlink_mission_request_int_t &packet,
+                                mavlink_mission_item_int_t &ret_packet) override WARN_IF_UNUSED;
+};
+
+class MissionItemProtocol_Rally : public MissionItemProtocol {
+public:
+    MissionItemProtocol_Rally(AP_Rally &_rally) :
+        rally(_rally) {}
+    void truncate(const mavlink_mission_count_t &packet) override;
+    MAV_MISSION_TYPE mission_type() const override { return MAV_MISSION_TYPE_RALLY; }
+
+    void complete(const GCS_MAVLINK &_link) override;
+    void timeout() override;
+
+protected:
+
+    ap_message next_item_ap_message_id() const override {
+        return MSG_NEXT_MISSION_REQUEST_RALLY;
+    }
+    bool clear_all_items() override WARN_IF_UNUSED;
+
+private:
+    AP_Rally &rally;
+
+    uint16_t item_count() const override {
+        return rally.get_rally_total();
+    }
+    uint16_t max_items() const override { return rally.get_rally_max(); }
+
+    MAV_MISSION_RESULT replace_item(const mavlink_mission_item_int_t&) override WARN_IF_UNUSED;
+    MAV_MISSION_RESULT append_item(const mavlink_mission_item_int_t&) override WARN_IF_UNUSED;
+
+    MAV_MISSION_RESULT get_item(const GCS_MAVLINK &_link,
+                                const mavlink_message_t &msg,
+                                const mavlink_mission_request_int_t &packet,
+                                mavlink_mission_item_int_t &ret_packet) override WARN_IF_UNUSED;
+
+    static MAV_MISSION_RESULT convert_MISSION_ITEM_INT_to_RallyLocation(const mavlink_mission_item_int_t &cmd, RallyLocation &ret) WARN_IF_UNUSED;
+
+};
+
 ///
 /// @class	GCS_MAVLINK
 /// @brief	MAVLink transport control class
@@ -119,15 +296,49 @@ public:
     void        update_receive(uint32_t max_time_us=1000);
     void        update_send();
     void        init(AP_HAL::UARTDriver *port, mavlink_channel_t mav_chan);
-    void        setup_uart(const AP_SerialManager& serial_manager, AP_SerialManager::SerialProtocol protocol, uint8_t instance);
+    void        setup_uart(uint8_t instance);
     void        send_message(enum ap_message id);
-    void        send_text(MAV_SEVERITY severity, const char *fmt, ...);
-    void        send_textv(MAV_SEVERITY severity, const char *fmt, va_list arg_list);
+    void        send_text(MAV_SEVERITY severity, const char *fmt, ...) const;
+    void        send_textv(MAV_SEVERITY severity, const char *fmt, va_list arg_list) const;
     void        queued_param_send();
     void        queued_mission_request_send();
+
+    // returns true if we are requesting any items from the GCS:
+    bool requesting_mission_items() const;
+
+    void send_mission_ack(const mavlink_message_t &msg,
+                          MAV_MISSION_TYPE mission_type,
+                          MAV_MISSION_RESULT result) const {
+        mavlink_msg_mission_ack_send(chan,
+                                     msg.sysid,
+                                     msg.compid,
+                                     result,
+                                     mission_type);
+    }
+
+    static const MAV_MISSION_TYPE supported_mission_types[2];
+
     // packetReceived is called on any successful decode of a mavlink message
     virtual void packetReceived(const mavlink_status_t &status,
                                 mavlink_message_t &msg);
+
+    // send a mavlink_message_t out this GCS_MAVLINK connection.
+    // Caller is responsible for ensuring space.
+    void send_message(uint32_t msgid, const char *pkt) const {
+        const mavlink_msg_entry_t *entry = mavlink_get_msg_entry(msgid);
+        if (entry == nullptr) {
+            return;
+        }
+        send_message(pkt, entry);
+    }
+    void send_message(const char *pkt, const mavlink_msg_entry_t *entry) const {
+        _mav_finalize_message_chan_send(chan,
+                                        entry->msgid,
+                                        pkt,
+                                        entry->min_msg_len,
+                                        entry->max_msg_len,
+                                        entry->crc_extra);
+    }
 
     // accessor for uart
     AP_HAL::UARTDriver *get_uart() { return _port; }
@@ -165,7 +376,7 @@ public:
         return GCS_MAVLINK::active_channel_mask() & (1 << (chan-MAVLINK_COMM_0));
     }
     bool is_streaming() const {
-        return GCS_MAVLINK::streaming_channel_mask() & (1 << (chan-MAVLINK_COMM_0));
+        return sending_bucket_id != no_bucket_to_send;
     }
 
     mavlink_channel_t get_chan() const { return chan; }
@@ -184,8 +395,7 @@ public:
     void send_meminfo(void);
     void send_fence_status() const;
     void send_power_status(void);
-    void send_battery_status(const AP_BattMonitor &battery,
-                             const uint8_t instance) const;
+    void send_battery_status(const uint8_t instance) const;
     bool send_battery_status() const;
     void send_distance_sensor() const;
     // send_rangefinder sends only if a downward-facing instance is
@@ -286,6 +496,7 @@ public:
     static const struct stream_entries all_stream_entries[];
 
     virtual uint64_t capabilities() const;
+    uint8_t get_stream_slowdown_ms() const { return stream_slowdown_ms; }
 
 protected:
 
@@ -306,11 +517,6 @@ protected:
 
     virtual MAV_VTOL_STATE vtol_state() const { return MAV_VTOL_STATE_UNDEFINED; }
     virtual MAV_LANDED_STATE landed_state() const { return MAV_LANDED_STATE_UNDEFINED; }
-
-    bool            waypoint_receiving; // currently receiving
-    // the following two variables are only here because of Tracker
-    uint16_t        waypoint_request_i; // request index
-    uint16_t        waypoint_request_last; // last request index
 
     AP_Param *                  _queued_parameter;      ///< next parameter to
                                                         // be sent in queue
@@ -335,13 +541,14 @@ protected:
 
     MAV_RESULT handle_command_do_set_home(const mavlink_command_long_t &packet);
 
-    void handle_mission_request_list(AP_Mission &mission, mavlink_message_t *msg);
-    void handle_mission_request(AP_Mission &mission, mavlink_message_t *msg);
-    void handle_mission_clear_all(AP_Mission &mission, mavlink_message_t *msg);
+    void handle_mission_request_list(const mavlink_message_t *msg);
+    void handle_mission_request(mavlink_message_t *msg);
+    void handle_mission_request_int(mavlink_message_t *msg);
+    void handle_mission_clear_all(const mavlink_message_t *msg);
     virtual void handle_mission_set_current(AP_Mission &mission, mavlink_message_t *msg);
-    void handle_mission_count(AP_Mission &mission, mavlink_message_t *msg);
-    void handle_mission_write_partial_list(AP_Mission &mission, mavlink_message_t *msg);
-    bool handle_mission_item(mavlink_message_t *msg, AP_Mission &mission);
+    void handle_mission_count(const mavlink_message_t *msg);
+    void handle_mission_write_partial_list(const mavlink_message_t *msg);
+    void handle_mission_item(const mavlink_message_t *msg);
 
     void handle_common_param_message(mavlink_message_t *msg);
     void handle_param_set(mavlink_message_t *msg);
@@ -412,6 +619,7 @@ protected:
 
     MAV_RESULT handle_command_preflight_can(const mavlink_command_long_t &packet);
 
+    MAV_RESULT handle_command_battery_reset(const mavlink_command_long_t &packet);
     void handle_command_long(mavlink_message_t* msg);
     MAV_RESULT handle_command_accelcal_vehicle_pos(const mavlink_command_long_t &packet);
     virtual MAV_RESULT handle_command_mount(const mavlink_command_long_t &packet);
@@ -426,6 +634,8 @@ protected:
     MAV_RESULT handle_command_do_set_mode(const mavlink_command_long_t &packet);
     MAV_RESULT handle_command_get_home_position(const mavlink_command_long_t &packet);
     MAV_RESULT handle_command_do_fence_enable(const mavlink_command_long_t &packet);
+
+    void handle_optical_flow(const mavlink_message_t* msg);
 
     // vehicle-overridable message send function
     virtual bool try_send_message(enum ap_message id);
@@ -448,6 +658,8 @@ protected:
 
     static constexpr const float magic_force_arm_value = 2989.0f;
     static constexpr const float magic_force_disarm_value = 21196.0f;
+
+    virtual bool allow_disarm() const { return true; }
 
     void manual_override(RC_Channel *c, int16_t value_in, uint16_t offset, float scaler, const uint32_t tnow, bool reversed = false);
 
@@ -491,13 +703,6 @@ private:
     ///
     uint16_t                    packet_drops;
 
-    // waypoints
-    uint16_t        waypoint_dest_sysid; // where to send requests
-    uint16_t        waypoint_dest_compid; // "
-    uint32_t        waypoint_timelast_receive; // milliseconds
-    uint32_t        waypoint_timelast_request; // milliseconds
-    const uint16_t  waypoint_receive_timeout = 8000; // milliseconds
-
     // number of extra ms to add to slow things down for the radio
     uint16_t         stream_slowdown_ms;
 
@@ -530,7 +735,7 @@ private:
     int8_t next_deferred_message_to_send_cache = -1;
 
     struct deferred_message_bucket_t {
-        Bitmask ap_message_ids{MSG_LAST};
+        Bitmask<MSG_LAST> ap_message_ids;
         uint16_t interval_ms;
         uint16_t last_sent_ms; // from AP_HAL::millis16()
     };
@@ -538,7 +743,7 @@ private:
     static const uint8_t no_bucket_to_send = -1;
     static const ap_message no_message_to_send = (ap_message)-1;
     uint8_t sending_bucket_id = no_bucket_to_send;
-    Bitmask bucket_message_ids_to_send{MSG_LAST};
+    Bitmask<MSG_LAST> bucket_message_ids_to_send;
 
     ap_message next_deferred_bucket_message_to_send();
     void find_next_bucket_to_send();
@@ -546,7 +751,7 @@ private:
 
     // bitmask of IDs the code has spontaneously decided it wants to
     // send out.  Examples include HEARTBEAT (gcs_send_heartbeat)
-    Bitmask pushed_ap_message_ids{MSG_LAST};
+    Bitmask<MSG_LAST> pushed_ap_message_ids;
 
     // returns true if it is OK to send a message while we are in
     // delay callback.  In particular, when we are doing sensor init
@@ -599,8 +804,6 @@ private:
 
     // mavlink routing object
     static MAVLink_routing routing;
-
-    static const AP_SerialManager *serialmanager_p;
 
     struct pending_param_request {
         mavlink_channel_t chan;
@@ -737,6 +940,8 @@ public:
     virtual MAV_TYPE frame_type() const = 0;
     virtual const char* frame_string() const { return nullptr; }
 
+    void send_to_active_channels(uint32_t msgid, const char *pkt);
+
     void send_text(MAV_SEVERITY severity, const char *fmt, ...);
     void send_textv(MAV_SEVERITY severity, const char *fmt, va_list arg_list);
     virtual void send_statustext(MAV_SEVERITY severity, uint8_t dest_bitmask, const char *text);
@@ -752,19 +957,26 @@ public:
                               ap_var_type param_type,
                               float param_value);
 
+    static MissionItemProtocol_Waypoints *_missionitemprotocol_waypoints;
+    static MissionItemProtocol_Rally *_missionitemprotocol_rally;
+    MissionItemProtocol *get_prot_for_mission_type(const MAV_MISSION_TYPE mission_type) const;
+    void try_send_queued_message_for_type(MAV_MISSION_TYPE type);
+
     void update_send();
     void update_receive();
-    virtual void setup_uarts(AP_SerialManager &serial_manager);
+    virtual void setup_uarts();
 
-    bool out_of_time() const {
-        return _out_of_time;
+    // minimum amount of time (in microseconds) that must remain in
+    // the main scheduler loop before we are allowed to send any
+    // mavlink messages.  We want to prioritise the main flight
+    // control loop over communications
+    virtual uint16_t min_loop_time_remaining_for_message_send_us() const {
+        return 200;
     }
-    void set_out_of_time(bool val) {
-        _out_of_time = val;
-    }
+    bool out_of_time() const;
 
     // frsky backend
-    AP_Frsky_Telem frsky;
+    AP_Frsky_Telem *frsky;
 
     // Devo backend
     AP_DEVO_Telem devo_telemetry;
@@ -783,9 +995,6 @@ public:
 
     virtual bool simple_input_active() const { return false; }
     virtual bool supersimple_input_active() const { return false; }
-
-    // returns 16-bits worth of error data to be packed into SYS_STATUS field
-    static uint16_t sys_status_errors1();
 
 protected:
 
@@ -817,8 +1026,8 @@ private:
     // queue of outgoing statustext messages
     ObjectArray<statustext_t> _statustext_queue{_status_capacity};
 
-    // true if we are running short on time in our main loop
-    bool _out_of_time;
+    // true if we have already allocated protocol objects:
+    bool initialised_missionitemprotocol_objects;
 
     // handle passthru between two UARTs
     struct {

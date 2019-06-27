@@ -26,7 +26,7 @@ void Tracker::init_tracker()
     serial_manager.init();
 
     // setup first port early to allow BoardConfig to report errors
-    gcs().chan(0).setup_uart(serial_manager, AP_SerialManager::SerialProtocol_MAVLink, 0);
+    gcs().chan(0).setup_uart(0);
 
     // Register mavlink_delay_cb, which will run anytime you have
     // more than 5ms remaining in your call to hal.scheduler->delay
@@ -42,12 +42,15 @@ void Tracker::init_tracker()
     AP_Notify::flags.pre_arm_check = true;
     AP_Notify::flags.pre_arm_gps_check = true;
 
+    // initialise battery
+    battery.init();
+
     // init baro before we start the GCS, so that the CLI baro test works
     barometer.set_log_baro_bit(MASK_LOG_IMU);
     barometer.init();
 
     // setup telem slots with serial ports
-    gcs().setup_uarts(serial_manager);
+    gcs().setup_uarts();
 
 #if LOGGING_ENABLED == ENABLED
     log_init();
@@ -60,6 +63,7 @@ void Tracker::init_tracker()
 #endif // ENABLE_SCRIPTING
 
     // initialise compass
+    AP::compass().set_log_bit(MASK_LOG_COMPASS);
     AP::compass().init();
 
     // GPS Initialization
@@ -231,6 +235,7 @@ void Tracker::set_mode(enum ControlMode mode, mode_reason_t reason)
 
 	// log mode change
 	logger.Write_Mode(control_mode, reason);
+  gcs().send_message(MSG_HEARTBEAT);
 
     nav_status.bearing = ahrs.yaw_sensor * 0.01f;
 }

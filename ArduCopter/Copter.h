@@ -176,6 +176,19 @@
 #include <SITL/SITL.h>
 #endif
 
+#if FRAME_CONFIG == HELI_FRAME
+    #define AC_AttitudeControl_t AC_AttitudeControl_Heli
+#else
+    #define AC_AttitudeControl_t AC_AttitudeControl_Multi
+#endif
+
+#if FRAME_CONFIG == HELI_FRAME
+ #define MOTOR_CLASS AP_MotorsHeli
+#else
+ #define MOTOR_CLASS AP_MotorsMulticopter
+#endif
+
+#include "mode.h"
 
 class Copter : public AP_HAL::HAL::Callbacks {
 public:
@@ -193,6 +206,33 @@ public:
     friend class ToyMode;
     friend class RC_Channel_Copter;
     friend class RC_Channels_Copter;
+
+    friend class AutoTune;
+
+    friend class Mode;
+    friend class ModeAcro;
+    friend class ModeAcro_Heli;
+    friend class ModeAltHold;
+    friend class ModeAuto;
+    friend class ModeAutoTune;
+    friend class ModeAvoidADSB;
+    friend class ModeBrake;
+    friend class ModeCircle;
+    friend class ModeDrift;
+    friend class ModeFlip;
+    friend class ModeFlowHold;
+    friend class ModeFollow;
+    friend class ModeGuided;
+    friend class ModeLand;
+    friend class ModeLoiter;
+    friend class ModePosHold;
+    friend class ModeRTL;
+    friend class ModeSmartRTL;
+    friend class ModeSport;
+    friend class ModeStabilize;
+    friend class ModeStabilize_Heli;
+    friend class ModeThrow;
+    friend class ModeZigZag;
 
     Copter(void);
 
@@ -245,7 +285,13 @@ private:
         uint32_t last_healthy_ms;
         LowPassFilterFloat alt_cm_filt; // altitude filter
         int8_t glitch_count;
-    } rangefinder_state = { false, false, 0, 0 };
+    } rangefinder_state;
+
+    struct {
+        float target_alt_cm;        // desired altitude in cm above the ground
+        uint32_t last_update_ms;    // system time of last update to target_alt_cm
+        bool valid_for_logging;     // true if target_alt_cm is valid for logging
+    } surface_tracking;
 
 #if RPM_ENABLED == ENABLED
     AP_RPM rpm_sensor;
@@ -368,12 +414,6 @@ private:
     } sensor_health;
 
     // Motor Output
-#if FRAME_CONFIG == HELI_FRAME
- #define MOTOR_CLASS AP_MotorsHeli
-#else
- #define MOTOR_CLASS AP_MotorsMulticopter
-#endif
-
     MOTOR_CLASS *motors;
     const struct AP_Param::GroupInfo *motors_var_info;
 
@@ -402,8 +442,6 @@ private:
 #endif
 
     // Altitude
-    float target_rangefinder_alt;   // desired altitude in cm above the ground
-    bool target_rangefinder_alt_used; // true if mode is using target_rangefinder_alt
     int32_t baro_alt;            // barometer altitude in cm above home
     LowPassFilterVector3f land_accel_ef_filter; // accelerations for land and crash detector tests
 
@@ -424,11 +462,6 @@ private:
 
     // Attitude, Position and Waypoint navigation objects
     // To-Do: move inertial nav up or other navigation variables down here
-#if FRAME_CONFIG == HELI_FRAME
-    #define AC_AttitudeControl_t AC_AttitudeControl_Heli
-#else
-    #define AC_AttitudeControl_t AC_AttitudeControl_Multi
-#endif
     AC_AttitudeControl_t *attitude_control;
     AC_PosControl *pos_control;
     AC_WPNav *wp_nav;
@@ -468,11 +501,7 @@ private:
 #endif
 
 #if AC_AVOID_ENABLED == ENABLED
-# if BEACON_ENABLED == ENABLED
-    AC_Avoid avoid{ahrs, fence, g2.proximity, &g2.beacon};
-# else
-    AC_Avoid avoid{ahrs, fence, g2.proximity};
-# endif
+    AC_Avoid avoid;
 #endif
 
     // Rally library
@@ -538,8 +567,7 @@ private:
     // Tradheli flags
     typedef struct {
         uint8_t dynamic_flight          : 1;    // 0   // true if we are moving at a significant speed (used to turn on/off leaky I terms)
-        uint8_t init_targets_on_arming  : 1;    // 1   // true if we have been disarmed, and need to reset rate controller targets when we arm
-        uint8_t inverted_flight         : 1;    // 2   // true for inverted flight mode
+        uint8_t inverted_flight         : 1;    // 1   // true for inverted flight mode
     } heli_flags_t;
     heli_flags_t heli_flags;
 
@@ -618,7 +646,9 @@ private:
     void set_throttle_takeoff();
     float get_pilot_desired_climb_rate(float throttle_control);
     float get_non_takeoff_throttle();
-    float get_surface_tracking_climb_rate(int16_t target_rate, float current_alt_target, float dt);
+    float get_surface_tracking_climb_rate(int16_t target_rate);
+    bool get_surface_tracking_target_alt_cm(float &target_alt_cm) const;
+    void set_surface_tracking_target_alt_cm(float target_alt_cm);
     float get_avoidance_adjusted_climbrate(float target_rate);
     void set_accel_throttle_I_from_pilot_throttle();
     void rotate_body_frame_to_NE(float &x, float &y);
@@ -640,7 +670,7 @@ private:
     bool far_from_EKF_origin(const Location& loc);
 
     // compassmot.cpp
-    MAV_RESULT mavlink_compassmot(mavlink_channel_t chan);
+    MAV_RESULT mavlink_compassmot(const GCS_MAVLINK &gcs_chan);
 
     // crash_check.cpp
     void crash_check();
@@ -661,6 +691,7 @@ private:
     void esc_calibration_passthrough();
     void esc_calibration_auto();
     void esc_calibration_notify();
+    void esc_calibration_setup();
 
     // events.cpp
     void failsafe_radio_on_event();
@@ -686,9 +717,6 @@ private:
 
     // fence.cpp
     void fence_check();
-
-    // GCS_Mavlink.cpp
-    void gcs_send_heartbeat(void);
 
     // heli.cpp
     void heli_init();
@@ -722,7 +750,7 @@ private:
     void Log_Write_Data(uint8_t id, int16_t value);
     void Log_Write_Data(uint8_t id, uint16_t value);
     void Log_Write_Data(uint8_t id, float value);
-    void Log_Write_Parameter_Tuning(uint8_t param, float tuning_val, int16_t control_in, int16_t tune_low, int16_t tune_high);
+    void Log_Write_Parameter_Tuning(uint8_t param, float tuning_val, float tune_min, float tune_max);
     void Log_Sensor_Health();
 #if FRAME_CONFIG == HELI_FRAME
     void Log_Write_Heli(void);
@@ -750,8 +778,6 @@ private:
     // motors.cpp
     void arm_motors_check();
     void auto_disarm_check();
-    bool init_arm_motors(AP_Arming::Method method, bool do_arming_checks=true);
-    void init_disarm_motors();
     void motors_output();
     void lost_vehicle_check();
 
@@ -846,8 +872,6 @@ private:
 #if OSD_ENABLED == ENABLED
     void publish_osd_info();
 #endif
-
-#include "mode.h"
 
     Mode *flightmode;
 #if MODE_ACRO_ENABLED == ENABLED

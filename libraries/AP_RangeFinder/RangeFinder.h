@@ -35,7 +35,8 @@ class AP_RangeFinder_Backend;
 class RangeFinder
 {
     friend class AP_RangeFinder_Backend;
-
+    //UAVCAN drivers are initialised in the Backend, hence list of drivers is needed there.
+    friend class AP_RangeFinder_UAVCAN;
 public:
     RangeFinder(AP_SerialManager &_serial_manager);
 
@@ -68,6 +69,9 @@ public:
         RangeFinder_TYPE_BenewakeTFmini = 20,
         RangeFinder_TYPE_PLI2CV3HP = 21,
         RangeFinder_TYPE_PWM = 22,
+        RangeFinder_TYPE_BLPing = 23,
+        RangeFinder_TYPE_UAVCAN = 24,
+        RangeFinder_TYPE_BenewakeTFminiPlus = 25,
     };
 
     enum RangeFinder_Function {
@@ -90,9 +94,6 @@ public:
         uint16_t voltage_mv;            // voltage in millivolts, if applicable, otherwise 0
         enum RangeFinder_Status status; // sensor status
         uint8_t  range_valid_count;     // number of consecutive valid readings (maxes out at 10)
-        bool     pre_arm_check;         // true if sensor has passed pre-arm checks
-        uint16_t pre_arm_distance_min;  // min distance captured during pre-arm checks
-        uint16_t pre_arm_distance_max;  // max distance captured during pre-arm checks
         uint32_t last_reading_ms;       // system time of last successful update from sensor
 
         const struct AP_Param::GroupInfo *var_info;
@@ -102,7 +103,9 @@ public:
 
     // parameters for each instance
     static const struct AP_Param::GroupInfo var_info[];
-    
+
+    void set_log_rfnd_bit(uint32_t log_rfnd_bit) { _log_rfnd_bit = log_rfnd_bit; }
+
     // Return the number of range finder instances
     uint8_t num_sensors(void) const {
         return num_instances;
@@ -140,6 +143,9 @@ public:
     const Vector3f &get_pos_offset_orient(enum Rotation orientation) const;
     uint32_t last_reading_ms(enum Rotation orientation) const;
 
+    // indicate which bit in LOG_BITMASK indicates RFND should be logged
+    void set_rfnd_bit(uint32_t log_rfnd_bit) { _log_rfnd_bit = log_rfnd_bit; }
+
     /*
       set an externally estimated terrain height. Used to enable power
       saving (where available) at high altitudes.
@@ -147,13 +153,6 @@ public:
     void set_estimated_terrain_height(float height) {
         estimated_terrain_height = height;
     }
-
-    /*
-      returns true if pre-arm checks have passed for all range finders
-      these checks involve the user lifting or rotating the vehicle so that sensor readings between
-      the min and 2m can be captured
-     */
-    bool pre_arm_check() const;
 
     static RangeFinder *get_singleton(void) { return _singleton; }
 
@@ -173,7 +172,13 @@ private:
     void convert_params(void);
 
     void detect_instance(uint8_t instance, uint8_t& serial_instance);
-    void update_instance(uint8_t instance);  
 
     bool _add_backend(AP_RangeFinder_Backend *driver);
+
+    uint32_t _log_rfnd_bit = -1;
+    void Log_RFND();
+};
+
+namespace AP {
+    RangeFinder *rangefinder();
 };
