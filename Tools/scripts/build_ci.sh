@@ -93,6 +93,14 @@ for t in $CI_BUILD_TARGET; do
         continue
     fi
 
+    if [ "$t" == "CubeOrange-bootloader" ]; then
+        echo "Building CubeOrange bootloader"
+        $waf configure --board CubeOrange --bootloader
+        $waf clean
+        $waf bootloader
+        continue
+    fi
+
     if [ "$t" == "stm32f7" ]; then
         echo "Building mRoX21-777/"
         $waf configure --board mRoX21-777
@@ -102,13 +110,21 @@ for t in $CI_BUILD_TARGET; do
     fi
 
     if [ "$t" == "stm32h7" ]; then
-        echo "Building Pixhawk4Pro"
-        $waf configure --board Pixhawk4Pro
+        echo "Building Pixhawk6"
+        $waf configure --board Pixhawk6
         $waf clean
         $waf copter
         continue
     fi
 
+    if [ "$t" == "fmuv2-plane" ]; then
+        echo "Building fmuv2 plane"
+        $waf configure --board fmuv2
+        $waf clean
+        $waf plane
+        continue
+    fi
+    
     if [ "$t" == "iofirmware" ]; then
         echo "Building iofirmware"
         $waf configure --board iomcu

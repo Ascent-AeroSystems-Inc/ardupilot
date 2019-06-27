@@ -10,7 +10,8 @@
 #include <AP_Motors/AP_Motors.h>
 #include <AC_AttitudeControl/AC_AttitudeControl.h>
 #include <AC_AttitudeControl/AC_PosControl.h>
-#include <AP_RangeFinder/RangeFinder_Backend.h>
+#include <AP_RSSI/AP_RSSI.h>
+#include <AP_GPS/AP_GPS.h>
 
 #include "AP_Logger.h"
 #include "AP_Logger_File.h"
@@ -175,25 +176,6 @@ void AP_Logger::Write_GPS(uint8_t i, uint64_t time_us)
 }
 
 
-// Write an RFND (rangefinder) packet
-void AP_Logger::Write_RFND(const RangeFinder &rangefinder)
-{
-    AP_RangeFinder_Backend *s0 = rangefinder.get_backend(0);
-    AP_RangeFinder_Backend *s1 = rangefinder.get_backend(1);
-
-    struct log_RFND pkt = {
-        LOG_PACKET_HEADER_INIT((uint8_t)(LOG_RFND_MSG)),
-        time_us       : AP_HAL::micros64(),
-        dist1         : s0 ? s0->distance_cm() : (uint16_t)0,
-        status1       : s0 ? (uint8_t)s0->status() : (uint8_t)0,
-        orient1       : s0 ? s0->orientation() : ROTATION_NONE,
-        dist2         : s1 ? s1->distance_cm() : (uint16_t)0,
-        status2       : s1 ? (uint8_t)s1->status() : (uint8_t)0,
-        orient2       : s1 ? s1->orientation() : ROTATION_NONE,
-    };
-    WriteBlock(&pkt, sizeof(pkt));
-}
-
 // Write an RCIN packet
 void AP_Logger::Write_RCIN(void)
 {
@@ -245,12 +227,17 @@ void AP_Logger::Write_RCOUT(void)
 }
 
 // Write an RSSI packet
-void AP_Logger::Write_RSSI(AP_RSSI &rssi)
+void AP_Logger::Write_RSSI()
 {
+    AP_RSSI *rssi = AP::rssi();
+    if (rssi == nullptr) {
+        return;
+    }
+
     struct log_RSSI pkt = {
         LOG_PACKET_HEADER_INIT(LOG_RSSI_MSG),
         time_us       : AP_HAL::micros64(),
-        RXRSSI        : rssi.read_receiver_rssi()
+        RXRSSI        : rssi->read_receiver_rssi()
     };
     WriteBlock(&pkt, sizeof(pkt));
 }
@@ -1529,35 +1516,6 @@ void AP_Logger::Write_ESC(uint8_t id, uint64_t time_us, int32_t rpm, uint16_t vo
     WriteBlock(&pkt, sizeof(pkt));
 }
 
-// Write a AIRSPEED packet
-void AP_Logger::Write_Airspeed(AP_Airspeed &airspeed)
-{
-    uint64_t now = AP_HAL::micros64();
-    for (uint8_t i=0; i<AIRSPEED_MAX_SENSORS; i++) {
-        if (!airspeed.enabled(i)) {
-            continue;
-        }
-        float temperature;
-        if (!airspeed.get_temperature(i, temperature)) {
-            temperature = 0;
-        }
-        struct log_AIRSPEED pkt = {
-            LOG_PACKET_HEADER_INIT(i==0?LOG_ARSP_MSG:LOG_ASP2_MSG),
-            time_us       : now,
-            airspeed      : airspeed.get_raw_airspeed(i),
-            diffpressure  : airspeed.get_differential_pressure(i),
-            temperature   : (int16_t)(temperature * 100.0f),
-            rawpressure   : airspeed.get_corrected_pressure(i),
-            offset        : airspeed.get_offset(i),
-            use           : airspeed.use(i),
-            healthy       : airspeed.healthy(i),
-            health_prob   : airspeed.get_health_failure_probability(i),
-            primary       : airspeed.get_primary()
-        };
-        WriteBlock(&pkt, sizeof(pkt));
-    }
-}
-
 // Write a Yaw PID packet
 void AP_Logger::Write_PID(uint8_t msg_type, const PID_Info &info)
 {
@@ -1736,4 +1694,18 @@ void AP_Logger::Write_SRTL(bool active, uint16_t num_points, uint16_t max_points
         D               : breadcrumb.z
     };
     WriteBlock(&pkt_srtl, sizeof(pkt_srtl));
+}
+
+void AP_Logger::Write_OA(uint8_t algorithm, const Location& final_dest, const Location& oa_dest)
+{
+    struct log_OA pkt = {
+        LOG_PACKET_HEADER_INIT(LOG_OA_MSG),
+        time_us     : AP_HAL::micros64(),
+        algorithm   : algorithm,
+        final_lat   : final_dest.lat,
+        final_lng   : final_dest.lng,
+        oa_lat      : oa_dest.lat,
+        oa_lng      : oa_dest.lng,
+    };
+    WriteBlock(&pkt, sizeof(pkt));
 }

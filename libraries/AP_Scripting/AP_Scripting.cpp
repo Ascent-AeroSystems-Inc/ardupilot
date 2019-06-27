@@ -44,7 +44,7 @@ const AP_Param::GroupInfo AP_Scripting::var_info[] = {
     // @Values: 0:None,1:Lua Scripts
     // @RebootRequired: True
     // @User: Advanced
-    AP_GROUPINFO_FLAGS("ENABLE", 1, AP_Scripting, _enable, 1, AP_PARAM_FLAG_ENABLE),
+    AP_GROUPINFO_FLAGS("ENABLE", 1, AP_Scripting, _enable, 0, AP_PARAM_FLAG_ENABLE),
 
     // @Param: VM_I_COUNT
     // @DisplayName: Scripting Virtual Machine Instruction Count
@@ -62,6 +62,8 @@ const AP_Param::GroupInfo AP_Scripting::var_info[] = {
     // @User: Advanced
     // @RebootRequired: True
     AP_GROUPINFO("HEAP_SIZE", 3, AP_Scripting, _script_heap_size, 32*1024),
+
+    AP_GROUPINFO("DEBUG_LVL", 4, AP_Scripting, _debug_level, 1),
 
     AP_GROUPEND
 };
@@ -92,7 +94,7 @@ bool AP_Scripting::init(void) {
 }
 
 void AP_Scripting::thread(void) {
-    lua_scripts *lua = new lua_scripts(_script_vm_exec_count, _script_heap_size);
+    lua_scripts *lua = new lua_scripts(_script_vm_exec_count, _script_heap_size, _debug_level);
     if (lua == nullptr) {
         gcs().send_text(MAV_SEVERITY_CRITICAL, "Unable to allocate scripting memory");
         return;

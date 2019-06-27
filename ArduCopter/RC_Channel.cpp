@@ -104,6 +104,12 @@ void RC_Channel_Copter::init_aux_function(const aux_func_t ch_option, const aux_
     case AUX_FUNC::USER_FUNC3:
     case AUX_FUNC::ZIGZAG:
     case AUX_FUNC::ZIGZAG_SaveWP:
+    case AUX_FUNC::STABILIZE:
+    case AUX_FUNC::POSHOLD:
+    case AUX_FUNC::ALTHOLD:
+    case AUX_FUNC::FLOWHOLD:
+    case AUX_FUNC::CIRCLE:
+    case AUX_FUNC::DRIFT:
         break;
     default:
         RC_Channel::init_aux_function(ch_option, ch_flag);
@@ -414,7 +420,7 @@ void RC_Channel_Copter::do_aux_function(const aux_func_t ch_option, const aux_sw
             // arm or disarm the vehicle
             switch (ch_flag) {
             case HIGH:
-                copter.init_arm_motors(AP_Arming::Method::AUXSWITCH);
+                copter.arming.arm(AP_Arming::Method::AUXSWITCH);
                 // remember that we are using an arming switch, for use by set_throttle_zero_flag
                 copter.ap.armed_with_switch = true;
                 break;
@@ -422,7 +428,7 @@ void RC_Channel_Copter::do_aux_function(const aux_func_t ch_option, const aux_sw
                 // nothing
                 break;
             case LOW:
-                copter.init_disarm_motors();
+                copter.arming.disarm();
                 break;
             }
             break;
@@ -489,16 +495,16 @@ void RC_Channel_Copter::do_aux_function(const aux_func_t ch_option, const aux_sw
             break;
 
 #ifdef USERHOOK_AUXSWITCH
-        case USER_FUNC1:
-            userhook_auxSwitch1(ch_flag);
+        case AUX_FUNC::USER_FUNC1:
+            copter.userhook_auxSwitch1(ch_flag);
             break;
 
-        case USER_FUNC2:
-            userhook_auxSwitch2(ch_flag);
+        case AUX_FUNC::USER_FUNC2:
+            copter.userhook_auxSwitch2(ch_flag);
             break;
 
-        case USER_FUNC3:
-            userhook_auxSwitch3(ch_flag);
+        case AUX_FUNC::USER_FUNC3:
+            copter.userhook_auxSwitch3(ch_flag);
             break;
 #endif
 
@@ -516,13 +522,45 @@ void RC_Channel_Copter::do_aux_function(const aux_func_t ch_option, const aux_sw
                         copter.mode_zigzag.save_or_move_to_destination(0);
                         break;
                     case MIDDLE:
-                        copter.mode_zigzag.return_to_manual_control();
+                        copter.mode_zigzag.return_to_manual_control(false);
                         break;
                     case HIGH:
                         copter.mode_zigzag.save_or_move_to_destination(1);
                         break;
                 }
             }
+#endif
+            break;
+
+        case AUX_FUNC::STABILIZE:
+            do_aux_function_change_mode(control_mode_t::STABILIZE, ch_flag);
+            break;
+
+        case AUX_FUNC::POSHOLD:
+#if MODE_POSHOLD_ENABLED == ENABLED
+            do_aux_function_change_mode(control_mode_t::POSHOLD, ch_flag);
+#endif
+            break;
+
+        case AUX_FUNC::ALTHOLD:
+            do_aux_function_change_mode(control_mode_t::ALT_HOLD, ch_flag);
+            break;
+
+	case AUX_FUNC::FLOWHOLD:
+#if OPTFLOW == ENABLED
+            do_aux_function_change_mode(control_mode_t::FLOWHOLD, ch_flag);
+#endif
+            break;
+
+        case AUX_FUNC::CIRCLE:
+#if MODE_CIRCLE_ENABLED == ENABLED
+            do_aux_function_change_mode(control_mode_t::CIRCLE, ch_flag);
+#endif
+            break;
+
+        case AUX_FUNC::DRIFT:
+#if MODE_DRIFT_ENABLED == ENABLED
+            do_aux_function_change_mode(control_mode_t::DRIFT, ch_flag);
 #endif
             break;
 

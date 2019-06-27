@@ -55,7 +55,7 @@ void Plane::init_ardupilot()
 
     // initialise serial ports
     serial_manager.init();
-    gcs().chan(0).setup_uart(serial_manager, AP_SerialManager::SerialProtocol_MAVLink, 0);
+    gcs().chan(0).setup_uart(0);
 
 
     // Register mavlink_delay_cb, which will run anytime you have
@@ -87,6 +87,7 @@ void Plane::init_ardupilot()
     barometer.init();
 
     // initialise rangefinder
+    rangefinder.set_log_rfnd_bit(MASK_LOG_SONAR);
     rangefinder.init(ROTATION_PITCH_270);
 
     // initialise battery monitoring
@@ -95,7 +96,7 @@ void Plane::init_ardupilot()
     rpm_sensor.init();
 
     // setup telem slots with serial ports
-    gcs().setup_uarts(serial_manager);
+    gcs().setup_uarts();
 
 #if OSD_ENABLED == ENABLED
     osd.init();
@@ -108,6 +109,7 @@ void Plane::init_ardupilot()
     // initialise airspeed sensor
     airspeed.init();
 
+    AP::compass().set_log_bit(MASK_LOG_COMPASS);
     AP::compass().init();
 
 #if OPTFLOW == ENABLED
@@ -244,10 +246,10 @@ bool Plane::set_mode(Mode &new_mode, const mode_reason_t reason)
     }
 
 #if !QAUTOTUNE_ENABLED
-    if (&new_mode == plane.mode_qautotune) {
+    if (&new_mode == &plane.mode_qautotune) {
         gcs().send_text(MAV_SEVERITY_INFO,"QAUTOTUNE disabled");
-        set_mode(plane.mode_qhover);
-        return;
+        set_mode(plane.mode_qhover, MODE_REASON_UNAVAILABLE);
+        return false;
     }
 #endif
 
@@ -299,6 +301,7 @@ bool Plane::set_mode(Mode &new_mode, const mode_reason_t reason)
     // log and notify mode change
     logger.Write_Mode(control_mode->mode_number(), control_mode_reason);
     notify_mode(*control_mode);
+    gcs().send_message(MSG_HEARTBEAT);
 
     return true;
 }
@@ -393,7 +396,8 @@ void Plane::startup_INS_ground(void)
 
     if (ins.gyro_calibration_timing() != AP_InertialSensor::GYRO_CAL_NEVER) {
         gcs().send_text(MAV_SEVERITY_ALERT, "Beginning INS calibration. Do not move plane");
-        hal.scheduler->delay(100);
+    } else {
+        gcs().send_text(MAV_SEVERITY_ALERT, "Skipping INS calibration");
     }
 
     ahrs.init();
@@ -416,13 +420,6 @@ void Plane::startup_INS_ground(void)
     } else {
         gcs().send_text(MAV_SEVERITY_WARNING,"No airspeed");
     }
-}
-
-// updates the status of the notify objects
-// should be called at 50hz
-void Plane::update_notify()
-{
-    notify.update();
 }
 
 // sets notify object flight mode information
@@ -457,57 +454,4 @@ int8_t Plane::throttle_percentage(void)
         return constrain_int16(throttle, 0, 100);
     }
     return constrain_int16(throttle, -100, 100);
-}
-
-/*
-  update AHRS soft arm state and log as needed
- */
-void Plane::change_arm_state(void)
-{
-    Log_Arm_Disarm();
-    update_soft_armed();
-    quadplane.set_armed(hal.util->get_soft_armed());
-}
-
-/*
-  arm motors
- */
-bool Plane::arm_motors(const AP_Arming::Method method, const bool do_arming_checks)
-{
-    if (!arming.arm(method, do_arming_checks)) {
-        return false;
-    }
-
-    change_arm_state();
-    return true;
-}
-
-/*
-  disarm motors
- */
-bool Plane::disarm_motors(void)
-{
-    if (!arming.disarm()) {
-        return false;
-    }
-    if (control_mode != &mode_auto) {
-        // reset the mission on disarm if we are not in auto
-        mission.reset();
-    }
-
-    // suppress the throttle in auto-throttle modes
-    throttle_suppressed = auto_throttle_mode;
-    
-    //only log if disarming was successful
-    change_arm_state();
-
-    // reload target airspeed which could have been modified by a mission
-    plane.aparm.airspeed_cruise_cm.load();
-    
-#if QAUTOTUNE_ENABLED
-    //save qautotune gains if enabled and success
-    quadplane.qautotune.save_tuning_gains();
-#endif
-
-    return true;
 }
