@@ -558,20 +558,28 @@ void AC_AttitudeControl::attitude_controller_run_quat()
     Quaternion to_to_from_quat = attitude_vehicle_quat.inverse() * _attitude_target_quat;
     Quaternion desired_ang_vel_quat = to_to_from_quat.inverse()*attitude_target_ang_vel_quat*to_to_from_quat;
 
+
     // Correct the thrust vector and smoothly add feedforward and yaw input
-    if(_thrust_error_angle > AC_ATTITUDE_THRUST_ERROR_ANGLE*2.0f){
-        _rate_target_ang_vel.z = _ahrs.get_gyro().z;
-    }else if(_thrust_error_angle > AC_ATTITUDE_THRUST_ERROR_ANGLE){
-        float feedforward_scalar = (1.0f - (_thrust_error_angle-AC_ATTITUDE_THRUST_ERROR_ANGLE)/AC_ATTITUDE_THRUST_ERROR_ANGLE);
-        _rate_target_ang_vel.x += desired_ang_vel_quat.q2*feedforward_scalar;
-        _rate_target_ang_vel.y += desired_ang_vel_quat.q3*feedforward_scalar;
+
+    if (_thrust_error_angle > AC_ATTITUDE_THRUST_ERROR_ANGLE * 2.0f) {
+
+        //_rate_target_ang_vel.z = _ahrs.get_gyro().z;
+
+    } else if (_thrust_error_angle > AC_ATTITUDE_THRUST_ERROR_ANGLE) {
+        float feedforward_scalar = (1.0f - (_thrust_error_angle - AC_ATTITUDE_THRUST_ERROR_ANGLE) / AC_ATTITUDE_THRUST_ERROR_ANGLE);
+        _rate_target_ang_vel.x += desired_ang_vel_quat.q2 * feedforward_scalar;
+        _rate_target_ang_vel.y += desired_ang_vel_quat.q3 * feedforward_scalar;
         _rate_target_ang_vel.z += desired_ang_vel_quat.q4;
-        _rate_target_ang_vel.z = _ahrs.get_gyro().z*(1.0-feedforward_scalar) + _rate_target_ang_vel.z*feedforward_scalar;
+        _rate_target_ang_vel.z = _ahrs.get_gyro().z * (1.0 - feedforward_scalar) + _rate_target_ang_vel.z * feedforward_scalar;
+
     } else {
         _rate_target_ang_vel.x += desired_ang_vel_quat.q2;
         _rate_target_ang_vel.y += desired_ang_vel_quat.q3;
         _rate_target_ang_vel.z += desired_ang_vel_quat.q4;
     }
+
+
+
 
     if (_rate_bf_ff_enabled) {
         // rotate target and normalize

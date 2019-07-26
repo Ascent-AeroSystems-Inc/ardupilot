@@ -34,6 +34,14 @@ RGBLed::RGBLed(uint8_t led_off, uint8_t led_bright, uint8_t led_medium, uint8_t 
 
 bool RGBLed::init()
 {
+
+
+    timed_sequence = false;
+    flight_mode_change_fail_flag  = false;
+	flight_mode_change_flag  = false;
+	arming_fail_flag  = false;
+
+
     return hw_init();
 }
 
@@ -103,6 +111,7 @@ void RGBLed::update_colours(void)
         brightness = _led_dim;
     }
 
+
     // initialising pattern
     if (AP_Notify::flags.initialising) {
         if (step & 1) {
@@ -162,9 +171,14 @@ void RGBLed::update_colours(void)
         return;
     }
 
+
+
+
+
     // radio and battery failsafe patter: flash yellow
     // gps failsafe pattern : flashing yellow and blue
     // ekf_bad pattern : flashing yellow and red
+
     if (AP_Notify::flags.failsafe_radio || AP_Notify::flags.failsafe_battery ||
             AP_Notify::flags.ekf_bad || AP_Notify::flags.gps_glitching || AP_Notify::flags.leak_detected) {
         switch(step) {
@@ -208,7 +222,12 @@ void RGBLed::update_colours(void)
         }
         // exit so no other status modify this pattern
         return;
+
     }
+
+
+
+
 
     // solid green or blue if armed
     if (AP_Notify::flags.armed) {
@@ -324,12 +343,15 @@ void RGBLed::update_colours(void)
 // at 50Hz
 void RGBLed::update()
 {
+
     if (!pNotify->_rgb_led_override) {
         update_colours();
         set_rgb(_red_des, _green_des, _blue_des);
     } else {
+
         update_override();
     }
+
 }
 
 /*

@@ -77,7 +77,9 @@ public:
         uint8_t gps_status;       // see the GPS_0 = no gps, 1 = no lock, 2 = 2d lock, 3 = 3d lock, 4 = dgps lock, 5 = rtk lock
         uint8_t gps_num_sats;     // number of sats
         uint8_t flight_mode;      // flight mode
+
         float battery_voltage;
+
         bool armed;               // 0 = disarmed, 1 = armed
         bool pre_arm_check;       // true if passing pre arm checks
         bool pre_arm_gps_check;   // true if passing pre arm gps checks
@@ -98,6 +100,12 @@ public:
         bool waiting_for_throw;   // true when copter is in THROW mode and waiting to detect the user hand launch
         bool powering_off;        // true when the vehicle is powering off
         bool video_recording;     // true when the vehicle is recording video
+
+        bool arm_failed;
+        bool flight_mode_change;
+        bool flight_mode_change_fail;
+        bool arming;
+
     };
 
     /// notify_events_type - bitmask of active events.
@@ -120,6 +128,7 @@ public:
         uint32_t tune_next              : 3;    // tuning switched to next parameter
         uint32_t tune_save              : 1;    // tuning saved parameters
         uint32_t tune_error             : 1;    // tuning controller error
+
     };
 
     // The notify flags and values are static to allow direct class access

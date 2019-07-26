@@ -24,6 +24,8 @@ class AP_Param_Helper;
 #endif
 
 class AP_HAL::HAL {
+
+
 public:
     HAL(AP_HAL::UARTDriver* _uartA, // console
         AP_HAL::UARTDriver* _uartB, // 1st GPS
@@ -85,6 +87,10 @@ public:
         virtual void setup() = 0;
         virtual void loop() = 0;
     };
+
+
+
+
 
     struct FunCallbacks : public Callbacks {
         FunCallbacks(void (*setup_fun)(void), void (*loop_fun)(void));

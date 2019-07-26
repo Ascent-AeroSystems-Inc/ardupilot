@@ -29,6 +29,7 @@ void Copter::arm_motors_check()
     // ensure throttle is down
     if (channel_throttle->get_control_in() > 0) {
         arming_counter = 0;
+        AP_Notify::flags.arming = false;
         return;
     }
 
@@ -36,6 +37,18 @@ void Copter::arm_motors_check()
 
     // full right
     if (yaw_in > 4000) {
+
+
+    	if(motors->armed() ){
+
+    		AP_Notify::flags.arming = false;
+
+    	}else{
+
+    		AP_Notify::flags.arming = true;
+
+    	}
+
 
         // increase the arming counter to a maximum of 1 beyond the auto trim counter
         if (arming_counter <= AUTO_TRIM_DELAY) {
@@ -47,7 +60,10 @@ void Copter::arm_motors_check()
             // reset arming counter if arming fail
             if (!init_arm_motors(false)) {
                 arming_counter = 0;
+                AP_Notify::flags.arming = false;
             }
+
+            AP_Notify::flags.arming = false;
         }
 
         // arm the motors and configure for flight

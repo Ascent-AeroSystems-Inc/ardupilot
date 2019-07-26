@@ -45,7 +45,7 @@ AP_Notify *AP_Notify::_instance;
 
 // all I2C_LEDS
 #define I2C_LEDS (Notify_LED_ToshibaLED_I2C_Internal | Notify_LED_ToshibaLED_I2C_External | \
-                  Notify_LED_NCP5623_I2C_Internal | Notify_LED_NCP5623_I2C_External)
+                  Notify_LED_NCP5623_I2C_Internal | Notify_LED_NCP5623_I2C_External | Notify_LED_PCA9685LED_I2C_External)
 
 #ifndef BUILD_DEFAULT_LED_TYPE
 // PX4 boards
@@ -202,6 +202,7 @@ void AP_Notify::add_backends(void)
         return;
     }
 
+
     for (uint32_t i = 1; i < Notify_LED_MAX; i = i << 1) {
         switch(_led_type & i) {
             case Notify_LED_None:
@@ -272,8 +273,9 @@ void AP_Notify::add_backends(void)
                 break;
 
         }
-    }
 
+
+    }
 
     // Always try and add a display backend
     ADD_BACKEND(new Display());

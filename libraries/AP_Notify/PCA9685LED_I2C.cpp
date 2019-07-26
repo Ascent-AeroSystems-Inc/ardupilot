@@ -39,11 +39,125 @@ PCA9685LED_I2C::PCA9685LED_I2C() :
 
 bool PCA9685LED_I2C::hw_init()
 {
-    _dev = hal.i2c_mgr->get_device(1, PCA9685_ADDRESS);
 
+
+/*
+
+	 // first look for led on external bus
+	    _dev = std::move(hal.i2c_mgr->get_device(0, PCA9685_ADDRESS));
+	    if (!_dev) {
+	        return false;
+	    }
+	    WITH_SEMAPHORE(_dev->get_semaphore());
+
+	    _dev->set_retries(10);
+
+	    // enable the led
+	    bool ret = _dev->write_register(0x00, 0x20);
+	    if (!ret) {
+	        return false;
+	    }
+
+
+
+	    _dev->write_register(0xFA, 0x00);
+
+	    _dev->write_register( 0xFB, 0x10);
+
+	    _dev->write_register(0xFC, 0x00);
+
+	    _dev->write_register(0xFD, 0x00);
+
+
+
+
+
+	    _dev->set_retries(5);
+
+	    if (ret) {
+	    	 _dev->register_periodic_callback(20000, FUNCTOR_BIND_MEMBER(&PCA9685LED_I2C::_timer, void));
+	    }
+
+	    return ret;
+
+
+*/
+
+
+
+
+   _dev = hal.i2c_mgr->get_device(0, PCA9685_ADDRESS);
+
+   _dev->get_semaphore()->take_blocking();
+
+   _dev->set_retries(5);
+
+
+
+   bool ret = _dev->write_register(0x00, 0x21);
+
+  // _dev->write_register(0xFA, 0x00);
+
+  // _dev->write_register( 0xFB, 0x10);
+
+  // _dev->write_register(0xFC, 0x00);
+
+ //  _dev->write_register(0xFD, 0x00);
+
+
+   _dev->set_retries(1);
+
+   _dev->get_semaphore()->give();
+
+   if (ret) {
+   	 _dev->register_periodic_callback(20000, FUNCTOR_BIND_MEMBER(&PCA9685LED_I2C::_timer, void));
+   }
+
+   return ret;
+
+
+   /*
+
+   const uint8_t config1[2] = {PCA9685_MODE1, 0xF};
+   _dev->transfer(config1, sizeof(config1), nullptr, 0);
+
+
+
+
+
+   const uint8_t config2[2]= {0xFA, 0x00};
+   _dev->transfer(config2, sizeof(config2), nullptr, 0);
+
+
+   const uint8_t config3[2] = {0xFB, 0x10};
+   _dev->transfer(config3, sizeof(config3), nullptr, 0);
+
+
+
+   const uint8_t config4[2] = {0xFC, 0x00};
+   _dev->transfer(config4, sizeof(config4), nullptr, 0);
+
+
+
+   const uint8_t config5[2] = {0xFD, 0x00};
+   _dev->transfer(config5, sizeof(config5), nullptr, 0);
+
+
+
+
+   _dev->set_retries(5);
+
+   _dev->get_semaphore()->give();
+
+*/
+
+   /*
     if (!_dev) {
+
         return false;
     }
+
+
 
     _dev->get_semaphore()->take_blocking();
 
@@ -70,6 +184,8 @@ bool PCA9685LED_I2C::hw_init()
 
     _dev->register_periodic_callback(20000, FUNCTOR_BIND_MEMBER(&PCA9685LED_I2C::_timer, void));
 
+    */
+
     return true;
 }
 
@@ -85,15 +201,82 @@ bool PCA9685LED_I2C::hw_set_rgb(uint8_t red, uint8_t green, uint8_t blue)
 
 void PCA9685LED_I2C::_timer(void)
 {
+
+
+
+	/*
+	_dev->write_register(0x06, 0x00);
+	_dev->write_register(0x07, 0x10);
+	_dev->write_register(0x08, 0xFF);
+	_dev->write_register(0x09, 0x00);
+
+
+
+
     if (!_need_update) {
         return;
     }
+
     _need_update = false;
-    
+
+
+
+
+	   _dev->write_register(0xFA, 0x00);
+
+	  _dev->write_register( 0xFB, 0x10);
+
+	   _dev->write_register(0xFC, 0x00);
+
+	   _dev->write_register(0xFD, 0x00);
+
+
+
+
     uint16_t red_adjusted = rgb.r * 0x10;
     uint16_t green_adjusted = rgb.g * 0x10;
     uint16_t blue_adjusted = rgb.b * 0x10;
+*/
 
+    uint8_t red_on;
+    uint8_t red_off;
+
+    uint8_t green_on;
+    uint8_t green_off;
+
+    uint8_t blue_on;
+    uint8_t blue_off;
+
+
+    if(rgb.r > 0){
+        red_on = 0x10;
+        red_off = 0x00;
+    }else{
+        red_on = 0x00;
+        red_off = 0x10;
+    }
+
+
+
+    if(rgb.b > 0){
+        blue_on = 0x10;
+        blue_off = 0x00;
+    }else{
+    	blue_on = 0x00;
+    	blue_off = 0x10;
+    }
+
+
+    if(rgb.g != 0){
+        green_on = 0x10;
+        green_off = 0x00;
+    }else{
+    	 green_on = 0x00;
+    	 green_off = 0x10;
+    }
+
+
+/*
     uint8_t blue_channel_lsb = blue_adjusted & 0xFF;
     uint8_t blue_channel_msb = blue_adjusted >> 8;
 
@@ -102,11 +285,72 @@ void PCA9685LED_I2C::_timer(void)
 
     uint8_t red_channel_lsb = red_adjusted & 0xFF;
     uint8_t red_channel_msb = red_adjusted >> 8;
+*/
 
 
-    uint8_t transaction[] = {PCA9685_PWM, 0x00, 0x00, blue_channel_lsb, blue_channel_msb,
+    uint8_t transaction[] = {PCA9685_PWM, 0x00, red_on, 0xFF, red_off,
+    			 0x00, green_on, 0xFF, green_off,
+				 0x00, blue_on, 0xFF, blue_off};
+
+
+
+
+    /*
+     *
+     *     uint8_t transaction[] = {PCA9685_PWM, 0x00, 0x00, blue_channel_lsb, blue_channel_msb,
 			     0x00, 0x00, green_channel_lsb, green_channel_msb,
 			     0x00, 0x00, red_channel_lsb, red_channel_msb};
 
-    _dev->transfer(transaction, sizeof(transaction), nullptr, 0);
+
+    uint8_t transaction[] = {PCA9685_PWM, 0x00, 0x10, 0xFF, 0x00,
+											0x00, 0x10, 0xFF, 0x00,
+											0x00, 0x00, 0xFF, 0x00};
+*/
+
+   _dev->transfer(transaction, sizeof(transaction), nullptr, 0);
+
+
+
+
+	/*
+
+	_dev->write_register(0x06, 0x00);
+	_dev->write_register(0x07, 0x10);
+	_dev->write_register(0x08, 0xFF);
+	_dev->write_register(0x09, 0x00);
+
+
+	_dev->write_register(0x0A, 0x00);
+	_dev->write_register(0x0B, 0x00);
+	_dev->write_register(0x0C, green_channel_lsb);
+	_dev->write_register(0x0D, green_channel_msb);
+
+
+	_dev->write_register(0x0E, 0x00);
+	_dev->write_register(0x0F, 0x00);
+	_dev->write_register(0x10, red_channel_lsb);
+	_dev->write_register(0x11, red_channel_msb);
+
+*/
+
+
+
+
+return;
+	   /*
+
+
+
+
+
+	   _dev->write_register(0xFA, 0x00);
+
+	  _dev->write_register( 0xFB, 0x10);
+
+	   _dev->write_register(0xFC, 0x00);
+
+	   _dev->write_register(0xFD, 0x00);
+
+*/
+
 }

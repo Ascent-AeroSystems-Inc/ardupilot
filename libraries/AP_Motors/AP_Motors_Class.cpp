@@ -75,10 +75,28 @@ void AP_Motors::armed(bool arm)
 // pilot input in the -1 ~ +1 range for roll, pitch and yaw. 0~1 range for throttle
 void AP_Motors::set_radio_passthrough(float roll_input, float pitch_input, float throttle_input, float yaw_input)
 {
+
+    //normalize servo input
+    float total_out = norm(roll_input, pitch_input);
+
+      //if servos are saturated scale input and give throttle boost
+  	if (total_out > 1.0f) {
+
+  		float ratio = 1.0f / total_out;
+  		pitch_input *= ratio;
+  		roll_input *= ratio;
+
+
+  	}
+
+
     _roll_radio_passthrough = roll_input;
     _pitch_radio_passthrough = pitch_input;
     _throttle_radio_passthrough = throttle_input;
     _yaw_radio_passthrough = yaw_input;
+
+
+
 }
 
 /*

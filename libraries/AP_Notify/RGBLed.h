@@ -39,6 +39,15 @@ public:
     // handle LED control, only used when LED_OVERRIDE=1
     virtual void handle_led_control(mavlink_message_t *msg) override;
     
+
+    bool timed_sequence;
+    bool flight_mode_change_fail_flag ;
+	bool flight_mode_change_flag ;
+	bool arming_fail_flag ;
+	uint8_t step_counter;
+
+
+
 protected:
     // methods implemented in hardware specific classes
     virtual bool hw_init(void) = 0;
@@ -66,5 +75,7 @@ protected:
     } _led_override;
     
 private:
+
     virtual void update_colours();
+
 };

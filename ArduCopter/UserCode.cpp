@@ -5,6 +5,22 @@ void Copter::userhook_init()
 {
     // put your initialisation code here
     // this will be called once at start-up
+
+
+
+
+
+	AP_Notify::flags.flight_mode_change_fail = false;
+
+	AP_Notify::flags.flight_mode_change = false;
+
+	AP_Notify::flags.arm_failed = false;
+
+	AP_Notify::flags.LED_counter = 0;
+
+	AP_Notify::flags.arming = false;
+
+
 }
 #endif
 
@@ -12,6 +28,40 @@ void Copter::userhook_init()
 void Copter::userhook_FastLoop()
 {
     // put your 100Hz code here
+
+
+/*
+	if(hal.mag_flag_1){
+
+		gcs().send_text(MAV_SEVERITY_INFO, "Trying to initialize to PCA9685");
+
+		hal.mag_flag_1 = false;
+
+	}
+
+
+	if(hal.mag_flag_2){
+
+		gcs().send_text(MAV_SEVERITY_INFO, "Failed to init");
+
+		hal.mag_flag_2 = false;
+
+	}
+
+
+	if(hal.mag_flag_3){
+
+		gcs().send_text(MAV_SEVERITY_INFO, "Updating...");
+
+		hal.mag_flag_3 = false;
+
+	}
+
+
+*/
+
+
+
 }
 #endif
 
@@ -26,6 +76,9 @@ void Copter::userhook_50Hz()
 void Copter::userhook_MediumLoop()
 {
     // put your 10Hz code here
+
+
+
 }
 #endif
 
