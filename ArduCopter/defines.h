@@ -207,6 +207,21 @@ enum AutoMode {
     Auto_NavPayloadPlace,
 };
 
+
+// Auto modes
+enum VehicleState {
+    Disarm,
+	Land,
+    Takeoff,
+    Hover,
+    Transition,
+    Fwd_Flight,
+    Brake,
+	None,
+};
+
+
+
 // Guided modes
 enum GuidedMode {
     Guided_TakeOff,
@@ -392,6 +407,11 @@ enum LoggingParameters {
 #define DATA_WINCH_RELAXED                  68
 #define DATA_WINCH_LENGTH_CONTROL           69
 #define DATA_WINCH_RATE_CONTROL             70
+
+#define DATA_KILLSWITCH_POWER_CUT           71
+#define DATA_KILLSWITCH_DISARM              72
+
+
 
 // Error message sub systems and error codes
 #define ERROR_SUBSYSTEM_MAIN                1
