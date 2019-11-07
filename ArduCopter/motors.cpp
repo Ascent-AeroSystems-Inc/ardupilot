@@ -19,36 +19,27 @@ void Copter::arm_motors_check()
         return;
     }
 
-#if TOY_MODE_ENABLED == ENABLED
-    if (g2.toy_mode.enabled()) {
-        // not armed with sticks in toy mode
-        return;
-    }
-#endif
 
     // ensure throttle is down
     if (channel_throttle->get_control_in() > 0) {
         arming_counter = 0;
         AP_Notify::flags.arming = false;
+        arming_hold = false;
         return;
     }
 
     int16_t yaw_in = channel_yaw->get_control_in();
 
+
     // full right
-    if (yaw_in > 4000) {
+    if (yaw_in > 4000 and !arming_hold) {
 
-
+    	//set LED
     	if(motors->armed() ){
-
     		AP_Notify::flags.arming = false;
-
     	}else{
-
     		AP_Notify::flags.arming = true;
-
     	}
-
 
         // increase the arming counter to a maximum of 1 beyond the auto trim counter
         if (arming_counter <= AUTO_TRIM_DELAY) {
@@ -60,7 +51,7 @@ void Copter::arm_motors_check()
             // reset arming counter if arming fail
             if (!init_arm_motors(false)) {
                 arming_counter = 0;
-                AP_Notify::flags.arming = false;
+                arming_hold = true;
             }
 
             AP_Notify::flags.arming = false;
@@ -93,6 +84,7 @@ void Copter::arm_motors_check()
     // Yaw is centered so reset arming counter
     } else {
         arming_counter = 0;
+        AP_Notify::flags.arming = false;
     }
 }
 
@@ -266,6 +258,8 @@ void Copter::init_disarm_motors()
     if (!motors->armed()) {
         return;
     }
+
+    motors->cut_motor_power(false);
 
 #if HIL_MODE != HIL_MODE_DISABLED || CONFIG_HAL_BOARD == HAL_BOARD_SITL
     gcs().send_text(MAV_SEVERITY_INFO, "Disarming motors");
