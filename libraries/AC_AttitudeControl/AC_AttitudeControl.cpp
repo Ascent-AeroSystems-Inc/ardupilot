@@ -579,8 +579,6 @@ void AC_AttitudeControl::attitude_controller_run_quat()
     }
 
 
-
-
     if (_rate_bf_ff_enabled) {
         // rotate target and normalize
         Quaternion attitude_target_update_quat;

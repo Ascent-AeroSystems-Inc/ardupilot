@@ -12,7 +12,7 @@
 #include <AC_PID/AC_PID.h>
 #include <AC_PID/AC_P.h>
 
-#define AC_ATTITUDE_CONTROL_ANGLE_P                     4.5f             // default angle P gain for roll, pitch and yaw
+#define AC_ATTITUDE_CONTROL_ANGLE_P                     3.0f             // default angle P gain for roll, pitch and yaw
 
 #define AC_ATTITUDE_ACCEL_RP_CONTROLLER_MIN_RADSS       radians(40.0f)   // minimum body-frame acceleration limit for the stability controller (for roll and pitch axis)
 #define AC_ATTITUDE_ACCEL_RP_CONTROLLER_MAX_RADSS       radians(720.0f)  // maximum body-frame acceleration limit for the stability controller (for roll and pitch axis)
@@ -33,8 +33,8 @@
 #define AC_ATTITUDE_CONTROL_RATE_BF_FF_DEFAULT          1       // body-frame rate feedforward enabled by default
 
 #define AC_ATTITUDE_CONTROL_ANGLE_LIMIT_TC_DEFAULT      1.0f    // Time constant used to limit lean angle so that vehicle does not lose altitude
-#define AC_ATTITUDE_CONTROL_ANGLE_LIMIT_THROTTLE_MAX    0.8f    // Max throttle used to limit lean angle so that vehicle does not lose altitude
-#define AC_ATTITUDE_CONTROL_ANGLE_LIMIT_MIN             10.0f   // Min lean angle so that vehicle can maintain limited control
+#define AC_ATTITUDE_CONTROL_ANGLE_LIMIT_THROTTLE_MAX    0.95f    // Max throttle used to limit lean angle so that vehicle does not lose altitude
+#define AC_ATTITUDE_CONTROL_ANGLE_LIMIT_MIN             15.0f   // Min lean angle so that vehicle can maintain limited control
 
 #define AC_ATTITUDE_CONTROL_MIN_DEFAULT                 0.1f    // minimum throttle mix default
 #define AC_ATTITUDE_CONTROL_MAN_DEFAULT                 0.5f    // manual throttle mix default
@@ -227,6 +227,15 @@ public:
     // get throttle passed into attitude controller (i.e. throttle_in provided to set_throttle_out)
     float get_throttle_in() const { return _throttle_in; }
 
+
+
+
+    // Return angular velocity in radians used in the angular velocity controller
+    Vector3f accel_FF() const { return _accel_ang_ff; }
+
+    float _PID_scale;
+
+
     // Return throttle increase applied for tilt compensation
     float angle_boost() const { return _angle_boost; }
 
@@ -402,6 +411,13 @@ protected:
 
     // mix between throttle and hover throttle for 0 to 1 and ratio above hover throttle for >1
     float               _throttle_rpy_mix;
+
+    float last_x;
+    float last_y;
+
+    Vector3f _accel_ang_ff;
+
+
 
     // References to external libraries
     const AP_AHRS_View&  _ahrs;
