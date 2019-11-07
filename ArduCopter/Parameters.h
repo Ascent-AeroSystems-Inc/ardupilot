@@ -296,7 +296,7 @@ public:
         k_param_failsafe_gcs,
         k_param_rcmap, // 199
 
-        //
+        //k_param_throw_nextmode
         // 200: flight modes
         //
         k_param_flight_mode1 = 200,
@@ -361,6 +361,16 @@ public:
         k_param_DataFlash = 253, // 253 - Logging Group
 
         // 254,255: reserved
+
+		k_param_launch_hold_time = 256,
+		k_param_launch_timeout,
+
+		k_param_launch_detect,
+		k_param_thr_set_hold,
+		k_param_min_velo_z_on,
+		k_param_min_dwell,
+		k_param_add_climb,
+		k_param_stab_angle_cd
 
         // the k_param_* space is 9-bits in size
         // 511: reserved
@@ -448,6 +458,18 @@ public:
 
 #if MODE_THROW_ENABLED == ENABLED
     AP_Int8         throw_motor_start;
+    AP_Float		launch_hold_time;
+    AP_Float		launch_timeout;
+
+    AP_Float 		launch_detect;
+    AP_Float        thr_set_hold;
+	AP_Float 		min_velo_z_on;
+	AP_Int32		stab_angle_cd;
+	AP_Float 		min_dwell;
+	AP_Float		add_climb;
+
+
+
 #endif
 
 #if AP_TERRAIN_AVAILABLE && AC_TERRAIN
@@ -507,6 +529,7 @@ public:
     // Throw mode parameters
     AP_Int8 throw_nextmode;
     AP_Int8 throw_type;
+
 #endif
 
     // ground effect compensation enable/disable

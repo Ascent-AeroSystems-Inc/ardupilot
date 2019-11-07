@@ -16,75 +16,89 @@ bool Copter::ModeThrow::init(bool ignore_checks)
     }
 
     // init state
-    stage = Throw_Disarmed;
+    stage = Launch_Disarmed;
     nextmode_attempted = false;
 
     return true;
 }
+
 
 // runs the throw to start controller
 // should be called at 100hz or more
 void Copter::ModeThrow::run()
 {
     /* Throw State Machine
-    Throw_Disarmed - motors are off
-    Throw_Detecting -  motors are on and we are waiting for the throw
-    Throw_Uprighting - the throw has been detected and the copter is being uprighted
-    Throw_HgtStabilise - the copter is kept level and  height is stabilised about the target height
-    Throw_PosHold - the copter is kept at a constant position and height
+    Launch_Disarmed - motors are off
+    Launch_Detecting -  vehicle armed, wating for launch detection
+    Launch_Wait_for_PowerUp - vehicle is in the air waiting for power up criteria to be met
+    Launch_Stabilizing - motors are turned on and the vehcile is trying to stabilize its self
+    Launch_AltHold - vehicle will hold altitude before switching to another flight mode
     */
 
     // Don't enter THROW mode if interlock will prevent motors running
     if (!motors->armed() && motors->get_interlock()) {
-        // state machine entry is always from a disarmed state
-        stage = Throw_Disarmed;
 
-    } else if (stage == Throw_Disarmed && motors->armed()) {
-        gcs().send_text(MAV_SEVERITY_INFO,"waiting for throw");
-        stage = Throw_Detecting;
+    	// state machine entry is always from a disarmed state
+        stage = Launch_Disarmed;
 
-    } else if (stage == Throw_Detecting && throw_detected()){
-        gcs().send_text(MAV_SEVERITY_INFO,"throw detected - uprighting");
-        stage = Throw_Uprighting;
+    } else if (stage == Launch_Disarmed && motors->armed()) {
+
+        gcs().send_text(MAV_SEVERITY_INFO,"waiting for launch");
+        stage = Launch_Detecting;
+        stable = false;
+
+    } else if (stage == Launch_Detecting && Launch_detected()){
+
+    	gcs().send_text(MAV_SEVERITY_INFO,"launch detected");
+        stage = Launch_Wait_for_PowerUp;
+        set_land_complete(false);
+        copter.set_auto_armed(true);
+        start_time = (float)AP_HAL::millis();
 
         // Cancel the waiting for throw tone sequence
         AP_Notify::flags.waiting_for_throw = false;
 
-    } else if (stage == Throw_Uprighting && throw_attitude_good()) {
-        gcs().send_text(MAV_SEVERITY_INFO,"uprighted - controlling height");
-        stage = Throw_HgtStabilise;
+    } else if (stage == Launch_Wait_for_PowerUp && Power_On()) {
 
-        // initialize vertical speed and acceleration limits
-        // use brake mode values for rapid response
+        stage = Launch_Stabilizing;
+        copter.set_auto_armed(true);
+        set_land_complete(false);
+
+        //clear timer to reuse for stabilize dwell
+        start_time = (float)AP_HAL::millis();
+        timer = 0.0f;
+        stable = false;
+
+    } else if (stage == Launch_Stabilizing && Check_Stabilized()) {
+
+    	gcs().send_text(MAV_SEVERITY_INFO,"Stabilized");
+        stage = Launch_AltHold;
+
+        //clear timer to reuse for stabilize dwell
+        start_time = (float)AP_HAL::millis();
+        timer = 0.0f;
+        stable = true;
+
+        // initialize vertical speed and acceleration
         pos_control->set_speed_z(BRAKE_MODE_SPEED_Z, BRAKE_MODE_SPEED_Z);
         pos_control->set_accel_z(BRAKE_MODE_DECEL_RATE);
 
-        // initialise the demanded height to 3m above the throw height
-        // we want to rapidly clear surrounding obstacles
-        if (g2.throw_type == ThrowType_Drop) {
-            pos_control->set_alt_target(inertial_nav.get_altitude() - 100);
-        } else {
-            pos_control->set_alt_target(inertial_nav.get_altitude() + 300);
-        }
+        // initialise the demanded height to additional above the throw height
+
+        pos_control->set_alt_target(inertial_nav.get_altitude() + (fmaxf(g.add_climb, 0.0f)) );
 
         // set the initial velocity of the height controller demand to the measured velocity if it is going up
         // if it is going down, set it to zero to enforce a very hard stop
-        pos_control->set_desired_velocity_z(fmaxf(inertial_nav.get_velocity_z(),0.0f));
+        pos_control->set_desired_velocity_z(fmaxf(inertial_nav.get_velocity_z(), 0.0f));
 
         // Set the auto_arm status to true to avoid a possible automatic disarm caused by selection of an auto mode with throttle at minimum
         copter.set_auto_armed(true);
+        set_land_complete(false);
 
-    } else if (stage == Throw_HgtStabilise && throw_height_good()) {
-        gcs().send_text(MAV_SEVERITY_INFO,"height achieved - controlling position");
-        stage = Throw_PosHold;
+    } else if (stage == Launch_AltHold && Check_AltHold()) {
 
-        // initialise the loiter target to the curent position and velocity
-        loiter_nav->clear_pilot_desired_acceleration();
-        loiter_nav->init_target();
+        pos_control->freeze_ff_z();
 
-        // Set the auto_arm status to true to avoid a possible automatic disarm caused by selection of an auto mode with throttle at minimum
-        copter.set_auto_armed(true);
-    } else if (stage == Throw_PosHold && throw_position_good()) {
         if (!nextmode_attempted) {
             switch (g2.throw_nextmode) {
                 case AUTO:
@@ -100,180 +114,214 @@ void Copter::ModeThrow::run()
                     break;
             }
             nextmode_attempted = true;
+        }else if(!set_mode(POSHOLD, MODE_REASON_THROW_COMPLETE)){
+
+        	set_mode(ALT_HOLD, MODE_REASON_THROW_COMPLETE);
         }
     }
+
 
     // Throw State Processing
     switch (stage) {
 
-    case Throw_Disarmed:
+    case Launch_Disarmed:
 
-        // prevent motors from rotating before the throw is detected unless enabled by the user
-        if (g.throw_motor_start == 1) {
-            motors->set_desired_spool_state(AP_Motors::DESIRED_SPIN_WHEN_ARMED);
-        } else {
-            motors->set_desired_spool_state(AP_Motors::DESIRED_SHUT_DOWN);
-        }
+    	 motors->set_desired_spool_state(AP_Motors::DESIRED_SHUT_DOWN);
+
+		stable = false;
+		timer = 0.0f;
 
         // demand zero throttle (motors will be stopped anyway) and continually reset the attitude controller
         attitude_control->set_throttle_out_unstabilized(0,true,g.throttle_filt);
+        pos_control->relax_alt_hold_controllers(0.0f);
+        pos_control->update_z_controller();
         break;
 
-    case Throw_Detecting:
+    case Launch_Detecting:
 
-        // prevent motors from rotating before the throw is detected unless enabled by the user
-        if (g.throw_motor_start == 1) {
-            motors->set_desired_spool_state(AP_Motors::DESIRED_SPIN_WHEN_ARMED);
-        } else {
-            motors->set_desired_spool_state(AP_Motors::DESIRED_SHUT_DOWN);
-        }
+    	 motors->set_desired_spool_state(AP_Motors::DESIRED_SHUT_DOWN);
 
-        // Hold throttle at zero during the throw and continually reset the attitude controller
-        attitude_control->set_throttle_out_unstabilized(0,true,g.throttle_filt);
+    // demand zero throttle (motors will be stopped anyway) and continually reset the attitude controller
+         attitude_control->set_throttle_out_unstabilized(0,true,g.throttle_filt);
+         pos_control->relax_alt_hold_controllers(0.0f);
+         pos_control->update_z_controller();
+         break;
 
-        // Play the waiting for throw tone sequence to alert the user
-        AP_Notify::flags.waiting_for_throw = true;
+    case Launch_Wait_for_PowerUp:
 
+    	 motors->set_desired_spool_state(AP_Motors::DESIRED_SHUT_DOWN);
+
+    	// demand zero throttle (motors will be stopped anyway) and continually reset the attitude controller
+    	attitude_control->set_throttle_out_unstabilized(0,true,g.throttle_filt);
+    	pos_control->relax_alt_hold_controllers(0.0f);
+    	pos_control->update_z_controller();
+
+    	//update timer
+    	timer =  ((float)AP_HAL::millis()) - start_time;
         break;
 
-    case Throw_Uprighting:
+    case Launch_Stabilizing:
 
-        // set motors to full range
-        motors->set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
+    	// set motors to full range
+    	motors->set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
+
+    	//update timer only if stable, reset otherwise
+    	if(stable){
+    		timer =  ((float)AP_HAL::millis()) - start_time;
+    	}else{
+    		start_time = ((float)AP_HAL::millis());
+    	}
 
         // demand a level roll/pitch attitude with zero yaw rate
         attitude_control->input_euler_angle_roll_pitch_euler_rate_yaw(0.0f, 0.0f, 0.0f);
 
-        // output 50% throttle and turn off angle boost to maximise righting moment
-        attitude_control->set_throttle_out(0.5f, false, g.throttle_filt);
+        //Set throttle to hold at parameter value until stabilized
+        attitude_control->set_throttle_out(g.thr_set_hold, false, g.throttle_filt);
+        pos_control->relax_alt_hold_controllers(motors->get_throttle_hover());
 
         break;
 
-    case Throw_HgtStabilise:
+    case Launch_AltHold:
 
         // set motors to full range
         motors->set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
 
-        // call attitude controller
+    		timer =  ((float)AP_HAL::millis()) - start_time;
+
+        // demand a level roll/pitch attitude with zero yaw rate
         attitude_control->input_euler_angle_roll_pitch_euler_rate_yaw(0.0f, 0.0f, 0.0f);
 
         // call height controller
-        pos_control->set_alt_target_from_climb_rate_ff(0.0f, G_Dt, false);
-        pos_control->update_z_controller();
-
-        break;
-
-    case Throw_PosHold:
-
-        // set motors to full range
-        motors->set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
-
-        // run loiter controller
-        loiter_nav->update(ekfGndSpdLimit, ekfNavVelGainScaler);
-
-        // call attitude controller
-        attitude_control->input_euler_angle_roll_pitch_euler_rate_yaw(loiter_nav->get_roll(), loiter_nav->get_pitch(), 0.0f);
-
-        // call height controller
-        pos_control->set_alt_target_from_climb_rate_ff(0.0f, G_Dt, false);
         pos_control->update_z_controller();
 
         break;
     }
 
     // log at 10hz or if stage changes
+    //changed logging to 20Hz
     uint32_t now = AP_HAL::millis();
-    if ((stage != prev_stage) || (now - last_log_ms) > 100) {
+    if ((stage != prev_stage) || (now - last_log_ms) > 50) {
         prev_stage = stage;
         last_log_ms = now;
-        const float velocity = inertial_nav.get_velocity().length();
+        const float log_timer = timer;
         const float velocity_z = inertial_nav.get_velocity().z;
-        const float accel = copter.ins.get_accel().length();
+        const float accel = copter.ins.get_accel().z;
         const float ef_accel_z = ahrs.get_accel_ef().z;
-        const bool throw_detect = (stage > Throw_Detecting) || throw_detected();
-        const bool attitude_ok = (stage > Throw_Uprighting) || throw_attitude_good();
-        const bool height_ok = (stage > Throw_HgtStabilise) || throw_height_good();
-        const bool pos_ok = (stage > Throw_PosHold) || throw_position_good();
+        const bool launch_detect = (stage > Launch_Detecting) || Launch_detected();
+        const bool pwr_on = (stage > Launch_Wait_for_PowerUp) || Power_On();
+        const bool stabilize = (stage > Launch_Stabilizing) || Check_Stabilized();
+        const bool alt_ok = (stage == Launch_AltHold);
         DataFlash_Class::instance()->Log_Write(
             "THRO",
-            "TimeUS,Stage,Vel,VelZ,Acc,AccEfZ,Throw,AttOk,HgtOk,PosOk",
+            "TimeUS,Stage,log_timer,vel_z,Acc,AccEfZ,LchDet,PwrOn,Stab,PosOk",
             "s-nnoo----",
             "F-0000----",
             "QBffffbbbb",
             AP_HAL::micros64(),
             (uint8_t)stage,
-            (double)velocity,
+            (double)log_timer,
             (double)velocity_z,
             (double)accel,
             (double)ef_accel_z,
-            throw_detect,
-            attitude_ok,
-            height_ok,
-            pos_ok);
+			launch_detect,
+			pwr_on,
+			stabilize,
+            alt_ok);
     }
 }
 
-bool Copter::ModeThrow::throw_detected()
+bool Copter::ModeThrow::Launch_detected()
 {
-    // Check that we have a valid navigation solution
-    nav_filter_status filt_status = inertial_nav.get_filter_status();
-    if (!filt_status.flags.attitude || !filt_status.flags.horiz_pos_abs || !filt_status.flags.vert_pos) {
-        return false;
-    }
 
-    // Check for high speed (>500 cm/s)
-    bool high_speed = inertial_nav.get_velocity().length() > THROW_HIGH_SPEED;
+	float accel_check = copter.ins.get_accel().z;
 
-    // check for upwards or downwards trajectory (airdrop) of 50cm/s
-    bool changing_height;
-    if (g2.throw_type == ThrowType_Drop) {
-        changing_height = inertial_nav.get_velocity().z < -THROW_VERTICAL_SPEED;
-    } else {
-        changing_height = inertial_nav.get_velocity().z > THROW_VERTICAL_SPEED;
-    }
 
-    // Check the vertical acceleraton is greater than 0.25g
-    bool free_falling = ahrs.get_accel_ef().z > -0.25 * GRAVITY_MSS;
+	//acceleration above 'launch_detect' in body frame will trigger launch detection
+	if(accel_check <= -(g.launch_detect * GRAVITY_MSS)){
+		return true;
+	}
 
-    // Check if the accel length is < 1.0g indicating that any throw action is complete and the copter has been released
-    bool no_throw_action = copter.ins.get_accel().length() < 1.0f * GRAVITY_MSS;
-
-    // High velocity or free-fall combined with increasing height indicate a possible air-drop or throw release
-    bool possible_throw_detected = (free_falling || high_speed) && changing_height && no_throw_action;
-
-    // Record time and vertical velocity when we detect the possible throw
-    if (possible_throw_detected && ((AP_HAL::millis() - free_fall_start_ms) > 500)) {
-        free_fall_start_ms = AP_HAL::millis();
-        free_fall_start_velz = inertial_nav.get_velocity().z;
-    }
-
-    // Once a possible throw condition has been detected, we check for 2.5 m/s of downwards velocity change in less than 0.5 seconds to confirm
-    bool throw_condition_confirmed = ((AP_HAL::millis() - free_fall_start_ms < 500) && ((inertial_nav.get_velocity().z - free_fall_start_velz) < -250.0f));
-
-    // start motors and enter the control mode if we are in continuous freefall
-    if (throw_condition_confirmed) {
-        return true;
-    } else {
-        return false;
-    }
+	return false;
 }
 
-bool Copter::ModeThrow::throw_attitude_good()
+bool Copter::ModeThrow::Power_On()
 {
-    // Check that we have uprighted the copter
-    const Matrix3f &rotMat = ahrs.get_rotation_body_to_ned();
-    return (rotMat.c.z > 0.866f); // is_upright
+
+
+	if (timer <= g.launch_hold_time){
+
+		// do nothing if not past the hold time
+		return false;
+
+	}else if(timer >= g.launch_timeout){
+
+	    // power on if the timer is over the timeout period
+		gcs().send_text(MAV_SEVERITY_INFO,"Pwr: Time-Out");
+		timer = 0.0f;
+		start_time = ((float)AP_HAL::millis());
+		return true;
+
+	}else{
+
+		// power on if the timer is over the hold period and the minimum velocity is deteched
+		if(fabsf(inertial_nav.get_velocity().z) <= g.min_velo_z_on){
+
+			gcs().send_text(MAV_SEVERITY_INFO,"Pwr: Vz");
+			timer = 0.0f;
+			start_time = ((float)AP_HAL::millis());
+			return true;
+		}
+
+	return false;
+	}
+
 }
 
-bool Copter::ModeThrow::throw_height_good()
+bool Copter::ModeThrow::Check_Stabilized()
 {
-    // Check that we are within 0.5m of the demanded height
-    return (pos_control->get_alt_error() < 50.0f);
+
+	if(stage < Launch_Stabilizing){
+
+		return false;
+	}
+
+	//criteria for being upright
+
+	 if((labs(ahrs.roll_sensor) < g.stab_angle_cd) and (labs(ahrs.pitch_sensor) < g.stab_angle_cd)){
+		stable = true;
+	}else{
+		stable = false;
+	}
+
+	if(timer >= g.min_dwell) {
+
+		timer = 0.0f;
+		start_time = ((float)AP_HAL::millis());
+		return true;
+
+	}else{
+		return false;
+	}
+
 }
 
-bool Copter::ModeThrow::throw_position_good()
+
+bool Copter::ModeThrow::Check_AltHold()
 {
-    // check that our horizontal position error is within 50cm
-    return (pos_control->get_horizontal_error() < 50.0f);
+	//will always return true once the dwell has expired
+
+	if (timer <= g.min_dwell){
+
+		// do nothing if not past the hold time
+		return false;
+
+	}else{
+			return true;
+	}
+
+
 }
+
+
+
 #endif

@@ -784,6 +784,67 @@ const AP_Param::Info Copter::var_info[] = {
     // @Values: 0:Stopped,1:Running
     // @User: Standard
     GSCALAR(throw_motor_start, "THROW_MOT_START", 0),
+
+
+    // @Param: LAUNCH_HOLD_TIME
+    // @DisplayName: Minimum time that must pass until vehicle can startup after launch in mSec
+    // @Description: Vehicle will not power-up after launch unless this amount of time has past
+    // @Range: 0 3000
+    // @User: Standard
+	GSCALAR(launch_hold_time, "LAUNCH_HOLD_TIME", 750.0),
+
+    // @Param: LAUNCH_TIMEOUT
+    // @DisplayName: Time after which the vehicle will automatically power on
+    // @Description: Time after which the vehicle will power up regardless if apex criteria is met
+    // @Range: 500 5000
+    // @User: Standard
+	GSCALAR(launch_timeout, "LAUNCH_TIMEOUT", 1500.0),
+
+    // @Param: LAUNCH_DETCT
+    // @DisplayName: Launch Detection Threshold
+    // @Description: G'S that will trigger launch detection
+    // @Range: 0 100
+    // @User: Standard
+	GSCALAR(launch_detect, "LAUNCH_DETCT", 3.0),
+
+
+    // @Param: LAUNCH_VEL_ON
+    // @DisplayName: Launch Turn On Threshold
+    // @Description: Min ABS of vertical velocity in cm/s that will activate the motors.  This is the turn-on criteria.
+    // @Range: 1 1000
+    // @User: Standard
+	GSCALAR(min_velo_z_on, "LAUNCH_VEL_ON", 200.0),
+
+    // @Param: LAUNCH_THR_HOLD
+    // @DisplayName: Throttle Setting while stabilizing
+    // @Description: While stabilizing the motors will be set to this throttle
+    // @Range: 0.50 1.0
+    // @User: Standard
+	GSCALAR(thr_set_hold, "LAUNCH_THR_HOLD", 0.75),
+
+
+    // @Param: LAUNCH_STAB
+    // @DisplayName: Stabilized Criteria
+    // @Description: Angle under which the vehicle is considered stabilized.  In CentiDegrees.
+    // @Range: 500 2000
+    // @User: Standard
+	GSCALAR(stab_angle_cd, "LAUNCH_STAB", 800),
+
+    // @Param: LAUNCH_STAB_DWELL
+    // @DisplayName: Minimum time for stabilized threshold
+    // @Description: Minimum time which must pass for the vehicle to be considered stabilized. In milliseconds.
+    // @Range: 0 1000
+    // @User: Standard
+	GSCALAR(min_dwell, "LAUNCH_DWELL", 1000.0),
+
+    // @Param: LAUNCH_CLIMB
+    // @DisplayName: Additional altitude to climb after vehicle is stabilized. In centimeters.
+    // @Description: Additional altitude to climb after vehicle is stabilized. In centimeters.
+    // @Range: 0 1000
+    // @User: Standard
+	GSCALAR(add_climb, "LAUNCH_CLIMB", 300.0),
+
+
 #endif
 
 #if AP_TERRAIN_AVAILABLE && AC_TERRAIN
@@ -838,7 +899,14 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @Values: 0:Upward Throw,1:Drop
     // @User: Standard
     AP_GROUPINFO("THROW_TYPE", 4, ParametersG2, throw_type, Copter::ModeThrow::ThrowType_Upward),
+
+
+
+
 #endif
+
+
+
 
     // @Param: GND_EFFECT_COMP
     // @DisplayName: Ground Effect Compensation Enable/Disable
@@ -985,6 +1053,14 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @Path: ../libraries/AP_Follow/AP_Follow.cpp
     AP_SUBGROUPINFO(follow, "FOLL", 27, ParametersG2, AP_Follow),
 #endif
+
+
+
+
+
+
+
+
 
     AP_GROUPEND
 };

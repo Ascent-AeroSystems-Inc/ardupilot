@@ -1147,7 +1147,9 @@ public:
     bool init(bool ignore_checks) override;
     void run() override;
 
-    bool requires_GPS() const override { return true; }
+  //  bool requires_GPS() const override { return true; }
+
+    bool requires_GPS() const override { return false; }
     bool has_manual_throttle() const override { return false; }
     bool allows_arming(bool from_gcs) const override { return true; };
     bool is_autopilot() const override { return false; }
@@ -1165,26 +1167,31 @@ protected:
 
 private:
 
-    bool throw_detected();
-    bool throw_position_good();
-    bool throw_height_good();
-    bool throw_attitude_good();
+    bool Launch_detected();
+    bool Power_On();
+    bool Check_Stabilized();
+    bool Check_AltHold();
 
     // Throw stages
-    enum ThrowModeStage {
-        Throw_Disarmed,
-        Throw_Detecting,
-        Throw_Uprighting,
-        Throw_HgtStabilise,
-        Throw_PosHold
+    enum LaunchModeStage {
+    	Launch_Disarmed,
+		Launch_Detecting,
+		Launch_Wait_for_PowerUp,
+		Launch_Stabilizing,
+		Launch_AltHold
     };
 
-    ThrowModeStage stage = Throw_Disarmed;
-    ThrowModeStage prev_stage = Throw_Disarmed;
+    LaunchModeStage stage = Launch_Disarmed;
+    LaunchModeStage prev_stage = Launch_Disarmed;
     uint32_t last_log_ms;
     bool nextmode_attempted;
     uint32_t free_fall_start_ms;    // system time free fall was detected
     float free_fall_start_velz;     // vertical velocity when free fall was detected
+
+    float timer = 0.0f;
+    float start_time = 0.0f;
+    bool stable = false;
+    bool log_event = false;
 };
 
 // modes below rely on Guided mode so must be declared at the end (instead of in alphabetical order)
