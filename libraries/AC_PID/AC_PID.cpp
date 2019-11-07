@@ -52,6 +52,8 @@ AC_PID::AC_PID(float initial_p, float initial_i, float initial_d, float initial_
     // load parameter values from eeprom
     AP_Param::setup_object_defaults(this, var_info);
 
+    _initial_p = initial_p;
+
     _kp = initial_p;
     _ki = initial_i;
     _kd = initial_d;
@@ -181,6 +183,14 @@ void AC_PID::reset_I()
 {
     _integrator = 0;
 }
+
+
+float AC_PID::get_initial_kp()
+{
+    return _initial_p;
+}
+
+
 
 void AC_PID::load_gains()
 {

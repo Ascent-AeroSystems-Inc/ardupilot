@@ -23,6 +23,8 @@ public:
     // set_dt - set time step in seconds
     void        set_dt(float dt);
 
+    float _initial_p;
+
     // set_input_filter_all - set input to PID controller
     //  input is filtered before the PID controllers are run
     //  this should be called before any other calls to get_p, get_i or get_d
@@ -43,6 +45,9 @@ public:
     
     // reset_I - reset the integrator
     void        reset_I();
+
+    float		get_initial_kp();
+
 
     // reset_filter - input filter will be reset to the next value provided to set_input()
     void        reset_filter() { _flags._reset_filter = true; }

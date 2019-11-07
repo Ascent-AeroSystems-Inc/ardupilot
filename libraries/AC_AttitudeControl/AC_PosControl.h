@@ -20,7 +20,7 @@
 #define POSCONTROL_STOPPING_DIST_UP_MAX         300.0f  // max stopping distance (in cm) vertically while climbing
 #define POSCONTROL_STOPPING_DIST_DOWN_MAX       200.0f  // max stopping distance (in cm) vertically while descending
 
-#define POSCONTROL_SPEED                        500.0f  // default horizontal speed in cm/s
+#define POSCONTROL_SPEED                        700.0f  // default horizontal speed in cm/s
 #define POSCONTROL_SPEED_DOWN                  -150.0f  // default descent rate in cm/s
 #define POSCONTROL_SPEED_UP                     250.0f  // default climb rate in cm/s
 
