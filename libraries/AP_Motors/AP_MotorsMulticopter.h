@@ -78,6 +78,9 @@ public:
     // returns maximum thrust in the range 0 to 1
     float               get_throttle_thrust_max() const { return _throttle_thrust_max; }
 
+
+   void				cut_motor_power(bool cut_power){ _cut_motor_power = cut_power;}
+
     // return true if spool up is complete
     bool spool_up_complete() const { return _spool_mode == THROTTLE_UNLIMITED; }
 
@@ -182,9 +185,12 @@ protected:
     // spool variables
     spool_up_down_mode  _spool_mode;         // motor's current spool mode
     float               _spin_up_ratio;      // throttle percentage (0 ~ 1) between zero and throttle_min
+   bool				_cut_motor_power = false;
 
     // battery voltage, current and air pressure compensation variables
     LowPassFilterFloat  _batt_voltage_filt;     // filtered battery voltage expressed as a percentage (0 ~ 1.0) of batt_voltage_max
+
+
     float               _lift_max;              // maximum lift ratio from battery voltage
     float               _throttle_limit;        // ratio of throttle limit between hover and maximum
     float               _throttle_thrust_max;   // the maximum allowed throttle thrust 0.0 to 1.0 in the range throttle_min to throttle_max

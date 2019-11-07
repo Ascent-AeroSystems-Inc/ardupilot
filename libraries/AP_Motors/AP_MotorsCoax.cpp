@@ -3,12 +3,10 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation, either version 3 of the License, or
    (at your option) any later version.
-
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -65,19 +63,20 @@ void AP_MotorsCoax::set_update_rate( uint16_t speed_hz )
         1U << AP_MOTORS_MOT_4 ;
     rc_set_freq(mask, _speed_hz);
 }
-
 void AP_MotorsCoax::output_to_motors()
 {
     switch (_spool_mode) {
         case SHUT_DOWN:
             // sends minimum values out to the motors
-            rc_write_angle(AP_MOTORS_MOT_1, _roll_radio_passthrough * AP_MOTORS_COAX_SERVO_INPUT_RANGE);
-            rc_write_angle(AP_MOTORS_MOT_2, _pitch_radio_passthrough * AP_MOTORS_COAX_SERVO_INPUT_RANGE);
+            rc_write_angle(AP_MOTORS_MOT_1, _pitch_radio_passthrough * AP_MOTORS_COAX_SERVO_INPUT_RANGE);
+            rc_write_angle(AP_MOTORS_MOT_2, _roll_radio_passthrough * AP_MOTORS_COAX_SERVO_INPUT_RANGE);
             rc_write(AP_MOTORS_MOT_3, get_pwm_output_min());
             rc_write(AP_MOTORS_MOT_4, get_pwm_output_min());
 
             _delay_aft_rotor = true;
+            _spool_up_complete = false;
             _aft_rotor_start = 0;
+
             break;
 
         case SPIN_WHEN_ARMED:
@@ -86,7 +85,6 @@ void AP_MotorsCoax::output_to_motors()
                 rc_write_angle(AP_MOTORS_MOT_1+i, _actuator_out[i] * AP_MOTORS_COAX_SERVO_INPUT_RANGE);
             }
 
-
             if(_delay_aft_rotor){
 
                 rc_write(AP_MOTORS_MOT_3, get_pwm_output_min());
@@ -94,22 +92,31 @@ void AP_MotorsCoax::output_to_motors()
                 _aft_rotor_start = 0;
                 _spool_up_complete = false;
 
-                if(  _actuator[4] >= (   get_pwm_output_min() + _spin_min * (get_pwm_output_max()-get_pwm_output_min())  ))  {	_delay_aft_rotor = false; }
+              //  if(  calc_spin_up_to_pwm() >= (   (int16_t)(get_pwm_output_min() + (_spin_min*0.90f) * (get_pwm_output_max()-get_pwm_output_min()))  ))  {
 
-            }else{
+                if(_spin_up_ratio >= (_spin_arm / _spin_min)){
+                	_delay_aft_rotor = false;
+                }
 
-            	_aft_rotor_start += (_spool_up_time / _loop_rate) * _spin_min;
+            }else if(!_spool_up_complete){
 
-            	if(_aft_rotor_start >= _spin_min){
+            	_aft_rotor_start += (1.0f/(_spool_up_time * (float)_loop_rate)) * _spin_arm;
+
+            	if(_aft_rotor_start >= _spin_arm){
 
             		_spool_up_complete = true;
-            		_aft_rotor_start = _spin_min;
+            		_aft_rotor_start = _spin_arm;
 
             	}
 
-                rc_write(AP_MOTORS_MOT_3,  get_pwm_output_min() + _aft_rotor_start * (get_pwm_output_max()-get_pwm_output_min()) );
-
+                rc_write(AP_MOTORS_MOT_3,  (int16_t)((float)get_pwm_output_min() + _aft_rotor_start * (float)(get_pwm_output_max()-get_pwm_output_min())) );
                 rc_write(AP_MOTORS_MOT_4, calc_spin_up_to_pwm());
+
+            }else{
+
+                rc_write(AP_MOTORS_MOT_3,  calc_spin_up_to_pwm());
+                rc_write(AP_MOTORS_MOT_4, calc_spin_up_to_pwm());
+
             }
 
             break;
@@ -123,10 +130,18 @@ void AP_MotorsCoax::output_to_motors()
             }
 
 
+            if(_cut_motor_power){
+                rc_write(AP_MOTORS_MOT_3, calc_thrust_to_pwm(0));
+                rc_write(AP_MOTORS_MOT_4, calc_thrust_to_pwm(0));
+                break;
+
+            }
+
+
 
             if(_spool_up_complete){
                 rc_write(AP_MOTORS_MOT_3, calc_thrust_to_pwm(_thrust_yt_cw));
-                rc_write(AP_MOTORS_MOT_4, calc_thrust_to_pwm(_thrust_yt_cCw));
+                rc_write(AP_MOTORS_MOT_4, calc_thrust_to_pwm(_thrust_yt_ccw));
                 break;
             }
 
@@ -137,20 +152,21 @@ void AP_MotorsCoax::output_to_motors()
                 _aft_rotor_start = 0;
                 _spool_up_complete = false;
 
-                if( _actuator[4] >= (   get_pwm_output_min() + _spin_min * (get_pwm_output_max()-get_pwm_output_min())  )){
+                if(_spin_up_ratio >= 0.99f){
                 	_delay_aft_rotor = false;
                 }
 
             }else{
 
-            	_aft_rotor_start += (_spool_up_time / _loop_rate) * _spin_min;
+
+            	_aft_rotor_start += (1.0f/(_spool_up_time * (float)_loop_rate)) * _spin_arm;
 
             	if(_aft_rotor_start >= _spin_min){
             		_spool_up_complete = true;
             		_aft_rotor_start = _spin_min;
             	}
 
-                rc_write(AP_MOTORS_MOT_3,  get_pwm_output_min() + _aft_rotor_start * (get_pwm_output_max()-get_pwm_output_min()) );
+                rc_write(AP_MOTORS_MOT_3,  (int16_t)((float)get_pwm_output_min() + _aft_rotor_start * (float)(get_pwm_output_max()-get_pwm_output_min())) );
                 rc_write(AP_MOTORS_MOT_4, calc_spin_up_to_pwm());
             }
 
@@ -190,11 +206,11 @@ void AP_MotorsCoax::output_armed_stabilizing()
 
 
     // apply voltage and air pressure compensation
-    const float compensation_gain = get_compensation_gain();
-    roll_thrust = _roll_in * compensation_gain;
-    pitch_thrust = _pitch_in * compensation_gain;
-    yaw_thrust = _yaw_in * compensation_gain;
-    throttle_thrust = get_throttle() * compensation_gain;
+   // const float compensation_gain = get_compensation_gain();
+    roll_thrust = _roll_in; // compensation_gain;
+    pitch_thrust = _pitch_in; // compensation_gain;
+    yaw_thrust = _yaw_in; // compensation_gain;
+    throttle_thrust = get_throttle(); // * compensation_gain;
    // throttle_avg_max = _throttle_avg_max * compensation_gain;
 
     // sanity check throttle is above zero and below current limited throttle
@@ -219,8 +235,8 @@ void AP_MotorsCoax::output_armed_stabilizing()
 		roll_thrust *= ratio;
 		limit.roll_pitch = true;
 
-		float control_boost = constrain_float((total_out - 1.0f), 0.0f, 0.25f);
-		throttle_thrust = control_boost + throttle_thrust;
+		//float control_boost = constrain_float((total_out - 1.0f), 0.0f, 0.25f);
+		//throttle_thrust = control_boost + throttle_thrust;
 
 	}
 
@@ -256,16 +272,73 @@ void AP_MotorsCoax::output_armed_stabilizing()
 	   if(yaw_thrust >= 0.0f){
 
 			_thrust_yt_ccw = (throttle_thrust + (0.5f * yaw_thrust)) + yaw_headroom_available;
-			_thrust_yt_cw = (throttle_thrust - (0.5f * yaw_thrust)) - yaw_headroom_available;
+			_thrust_yt_cw = (throttle_thrust - (0.5f * yaw_thrust)) + yaw_headroom_available;
 
 
 	   }else{
 
-			_thrust_yt_ccw = (throttle_thrust + (0.5f * yaw_thrust)) - yaw_headroom_available;
+			_thrust_yt_ccw = (throttle_thrust + (0.5f * yaw_thrust)) + yaw_headroom_available;
 			_thrust_yt_cw = (throttle_thrust - (0.5f * yaw_thrust)) + yaw_headroom_available;
 
 	   }
 
+
+   }
+
+}
+
+/*
+
+   void AP_MotorsCoax::output_disarmed_stabilizing()
+
+   {
+
+	   	  float   roll_thrust;                // roll thrust input value, +/- 1.0
+	      float   pitch_thrust;               // pitch thrust input value, +/- 1.0
+	 //     float   yaw_thrust;                 // yaw thrust input value, +/- 1.0
+	      //float   throttle_thrust;            // throttle thrust input value, 0.0 - 1.0
+	                   // the difference between the pilot's desired throttle and throttle_thrust_best_rpy
+	     // float   thrust_out;                 //
+
+
+	      // apply voltage and air pressure compensation
+	     // const float compensation_gain = get_compensation_gain();
+	      roll_thrust = _roll_in; //* compensation_gain;
+	      pitch_thrust = _pitch_in; //* compensation_gain;
+	     // yaw_thrust = _yaw_in; //* compensation_gain;
+	     // throttle_thrust = 0.0f; // * compensation_gain;
+
+	      limit.throttle_lower = true;
+
+
+	      //normalize servo input
+	      float total_out = norm(pitch_thrust, roll_thrust);
+
+	      //if servos are saturated scale input and give throttle boost
+	  	if (total_out > 1.0f) {
+
+	  		float ratio = 1.0f / total_out;
+	  		pitch_thrust *= ratio;
+	  		roll_thrust *= ratio;
+	  		limit.roll_pitch = true;
+
+	  	}
+
+	  	_actuator_out[0] = pitch_thrust;
+	  	_actuator_out[1] = roll_thrust;
+
+	  	if (fabsf(_actuator_out[0]) > 1.0f) {
+	  		//limit.roll_pitch = true;  Handled above
+	  		_actuator_out[0] = constrain_float(_actuator_out[0], -1.0f, 1.0f);
+	  	}
+
+	  	if (fabsf(_actuator_out[1]) > 1.0f) {
+	  	  //  limit.roll_pitch = true;   Handled above
+	  		_actuator_out[1] = constrain_float(_actuator_out[1], -1.0f, 1.0f);
+	  	}
+
+	  			_thrust_yt_ccw = 0.0f;
+	  			_thrust_yt_cw = 0.0f;
 
    }
 
@@ -274,8 +347,6 @@ void AP_MotorsCoax::output_armed_stabilizing()
 
 
 
-
-    /*
 
     throttle_avg_max = constrain_float(throttle_avg_max, throttle_thrust, _throttle_thrust_max);
 
@@ -344,7 +415,6 @@ void AP_MotorsCoax::output_armed_stabilizing()
 
 
     */
-}
 
 // output_test - spin a motor at the pwm value specified
 //  motor_seq is the motor's sequence number from 1 to the number of motors on the frame
