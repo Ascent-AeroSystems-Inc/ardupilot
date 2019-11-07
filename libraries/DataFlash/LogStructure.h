@@ -659,6 +659,9 @@ struct PACKED log_Attitude {
     uint16_t yaw;
     uint16_t error_rp;
     uint16_t error_yaw;
+
+	int16_t ang_accel_x;
+    int16_t ang_accel_y;
 };
 
 struct PACKED log_PID {
@@ -915,9 +918,12 @@ struct PACKED log_Rate {
     float   control_yaw;
     float   yaw;
     float   yaw_out;
-    float   control_accel;
-    float   accel;
-    float   accel_out;
+   //float   control_accel;
+    float pid_update;
+ //   float   accel;
+  //  float   accel_out;
+    float   accel_x_ff;
+    float   accel_y_ff;
 };
 
 // #if SBP_HW_LOGGING
@@ -1404,7 +1410,7 @@ Format characters in the format string for binary log messages
     { LOG_GIMBAL3_MSG, sizeof(log_Gimbal3), \
       "GMB3", "Ihhh", "TimeMS,rl_torque_cmd,el_torque_cmd,az_torque_cmd", "s???", "C???" }, \
     { LOG_RATE_MSG, sizeof(log_Rate), \
-      "RATE", "Qffffffffffff",  "TimeUS,RDes,R,ROut,PDes,P,POut,YDes,Y,YOut,ADes,A,AOut", "skk-kk-kk-oo-", "F?????????BB-" }, \
+      "RATE", "Qffffffffffff",  "TimeUS,RDes,R,ROut,PDes,P,POut,YDes,Y,YOut,ADes,FFx,FFy", /*"skk-kk-kk-oo-"*/"skk-kk-kk-oo-", /*"F?????????B--"*/"F?????????---"  }, \
     { LOG_RALLY_MSG, sizeof(log_Rally), \
       "RALY", "QBBLLh", "TimeUS,Tot,Seq,Lat,Lng,Alt", "s--DUm", "F--GGB" },  \
     { LOG_VISUALODOM_MSG, sizeof(log_VisualOdom), \
