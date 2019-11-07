@@ -10,17 +10,6 @@ void Copter::userhook_init()
 
 
 
-	AP_Notify::flags.flight_mode_change_fail = false;
-
-	AP_Notify::flags.flight_mode_change = false;
-
-	AP_Notify::flags.arm_failed = false;
-
-	AP_Notify::flags.LED_counter = 0;
-
-	AP_Notify::flags.arming = false;
-
-
 }
 #endif
 
@@ -28,37 +17,6 @@ void Copter::userhook_init()
 void Copter::userhook_FastLoop()
 {
     // put your 100Hz code here
-
-
-/*
-	if(hal.mag_flag_1){
-
-		gcs().send_text(MAV_SEVERITY_INFO, "Trying to initialize to PCA9685");
-
-		hal.mag_flag_1 = false;
-
-	}
-
-
-	if(hal.mag_flag_2){
-
-		gcs().send_text(MAV_SEVERITY_INFO, "Failed to init");
-
-		hal.mag_flag_2 = false;
-
-	}
-
-
-	if(hal.mag_flag_3){
-
-		gcs().send_text(MAV_SEVERITY_INFO, "Updating...");
-
-		hal.mag_flag_3 = false;
-
-	}
-
-
-*/
 
 
 
@@ -69,6 +27,44 @@ void Copter::userhook_FastLoop()
 void Copter::userhook_50Hz()
 {
     // put your 50Hz code here
+
+/*
+	if(!motors->armed()){
+
+		CoaxState = Disarm;
+
+	} else if(ap.land_complete){
+
+		CoaxState = Land;
+
+	}else if(CoaxState == Takeoff){
+
+
+
+		CoaxState = Hover;
+
+
+	}else if(CoaxState == Takeoff)
+
+if(CoaxState == Disarm){
+
+
+	if(motors->armed()){
+
+		CoaxState = Takeoff;
+
+	}
+
+}else if(CoaxState == Takeoff){
+
+
+
+}
+
+*/
+
+
+
 }
 #endif
 
@@ -77,6 +73,56 @@ void Copter::userhook_MediumLoop()
 {
     // put your 10Hz code here
 
+
+
+	if(!motors->armed()){
+		return;
+	}
+
+	if(RC_Channels::rc_channel(CH_8)->get_radio_in() < 1500){
+		killswitch_counter = 0;
+		return;
+	}
+
+	float cos_lean_angle = (ahrs.cos_pitch()*ahrs.cos_roll());
+
+	bool killswitch_activate = {
+			ap.throttle_zero or
+			ap.land_complete or
+			cos_lean_angle <= 85.0f or
+			control_mode == LAND or
+			fabsf(attitude_control->get_att_error_angle_deg()) >= 35.0f
+
+	};
+
+
+
+	 if(killswitch_activate) {
+
+			 if(killswitch_counter >= 5){
+
+				 init_disarm_motors();
+				 motors->cut_motor_power(false);
+				 killswitch_counter = 0;
+				 gcs().send_text(MAV_SEVERITY_CRITICAL,"KillSwitch: Disarm");
+				 Log_Write_Event(DATA_KILLSWITCH_DISARM);
+				 return;
+
+			 }else if(killswitch_counter >= 2){
+
+					 motors->cut_motor_power(true);
+					 killswitch_counter++;
+
+			 }else{
+
+				 killswitch_counter++;
+			 }
+
+	 }else{
+
+		 killswitch_counter = 0;
+
+	 }
 
 
 }
@@ -93,6 +139,9 @@ void Copter::userhook_SlowLoop()
 void Copter::userhook_SuperSlowLoop()
 {
     // put your 1Hz code here
+
+
+
 }
 #endif
 

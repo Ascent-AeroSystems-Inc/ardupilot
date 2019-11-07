@@ -4,6 +4,21 @@
 // variables
 #ifdef USERHOOK_VARIABLES
 
+//KillSwitch
+	uint8_t killswitch_counter = 0;
+
+// Vehicle State Logic
+	VehicleState CoaxState = Disarm;
+//	bool take_off_complete = false;
+
+
+// Arming Logic
+
+	bool arming_hold = false;
+
+
+
+
 #if WII_CAMERA == 1
 WiiCamera           ircam;
 int                 WiiRange=0;
