@@ -101,12 +101,11 @@ public:
         bool powering_off;        // true when the vehicle is powering off
         bool video_recording;     // true when the vehicle is recording video
 
-        bool arm_failed;
-        bool flight_mode_change;
-        bool flight_mode_change_fail;
         bool arming;
 
     };
+
+
 
     /// notify_events_type - bitmask of active events.
     //      Notify library is responsible for setting back to zero after notification has been completed
@@ -128,6 +127,7 @@ public:
         uint32_t tune_next              : 3;    // tuning switched to next parameter
         uint32_t tune_save              : 1;    // tuning saved parameters
         uint32_t tune_error             : 1;    // tuning controller error
+
 
     };
 
