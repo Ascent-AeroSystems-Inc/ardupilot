@@ -2,8 +2,6 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Math/AP_Math.h>
 
-#define AP_MOTORS_ANG_ACCEL_FF_FILTER_HZ  10.0f
-
 // table of user settable parameters
 const AP_Param::GroupInfo AC_AttitudeControl_Multi::var_info[] = {
     // parameters from parent vehicle
@@ -176,24 +174,6 @@ AC_AttitudeControl_Multi::AC_AttitudeControl_Multi(AP_AHRS_View &ahrs, const AP_
     _pid_rate_yaw(AC_ATC_MULTI_RATE_YAW_P, AC_ATC_MULTI_RATE_YAW_I, AC_ATC_MULTI_RATE_YAW_D, AC_ATC_MULTI_RATE_YAW_IMAX, AC_ATC_MULTI_RATE_YAW_FILT_HZ, dt)
 {
     AP_Param::setup_object_defaults(this, var_info);
-
-
-    //setup angular accel FF filtering
-    _ang_accel_ffx_filt.set_cutoff_frequency(AP_MOTORS_ANG_ACCEL_FF_FILTER_HZ);
-    _ang_accel_ffx_filt.reset(0.0f);
-    _ang_accel_ffy_filt.set_cutoff_frequency(AP_MOTORS_ANG_ACCEL_FF_FILTER_HZ);
-    _ang_accel_ffy_filt.reset(0.0f);
-
-    _ang_accel_ffx_filt_input.set_cutoff_frequency(AP_MOTORS_ANG_ACCEL_FF_FILTER_HZ);
-    _ang_accel_ffx_filt_input.reset(0.0f);
-    _ang_accel_ffy_filt_input.set_cutoff_frequency(AP_MOTORS_ANG_ACCEL_FF_FILTER_HZ);
-    _ang_accel_ffy_filt_input.reset(0.0f);
-
-
-
-    _accel_ang_ff.x = 0.0f;
-    _accel_ang_ff.y = 0.0f;
-
 }
 
 // Update Alt_Hold angle maximum
@@ -237,12 +217,10 @@ float AC_AttitudeControl_Multi::get_throttle_boosted(float throttle_in)
         return throttle_in;
     }
     // inverted_factor is 1 for tilt angles below 60 degrees
-    // inverted_factor reduces from 1 to 0.5 for tilt angles between 60 and 90 degrees
-
-    //invert factor changed to 1.5 with limits at 0.5 and 1
+    // inverted_factor reduces from 1 to 0 for tilt angles between 60 and 90 degrees
 
     float cos_tilt = _ahrs.cos_pitch() * _ahrs.cos_roll();
-    float inverted_factor = constrain_float(1.5f*cos_tilt, 0.5f, 1.0f);
+    float inverted_factor = constrain_float(2.0f*cos_tilt, 0.0f, 1.0f);
     float boost_factor = 1.0f/constrain_float(cos_tilt, 0.5f, 1.0f);
 
     float throttle_out = throttle_in*inverted_factor*boost_factor;
@@ -274,53 +252,15 @@ void AC_AttitudeControl_Multi::update_throttle_rpy_mix()
 
 void AC_AttitudeControl_Multi::rate_controller_run()
 {
-
-   // update_throttle_rpy_mix();
-
-if(_dt > 0.0f){
-	_ang_accel_ffx_filt_input.apply(_rate_target_ang_vel.x, _dt);
-	_ang_accel_ffy_filt_input.apply(_rate_target_ang_vel.y, _dt);
-	 }
-
-
-	_accel_ang_ff.x= (_ang_accel_ffx_filt_input.get() - last_x)/_dt;
-	_accel_ang_ff.y = (_ang_accel_ffy_filt_input.get() - last_y)/_dt;
-
-/*
- if(_dt > 0.0f){
-
-	_ang_accel_ffx_filt.apply((_rate_target_ang_vel.x - last_x)/_dt, _dt);
-	_ang_accel_ffy_filt.apply((_rate_target_ang_vel.y - last_y)/_dt, _dt);
-
-	 }
-	 */
-
-	//_ang_accel_ffy_filt.apply((_rate_target_ang_vel.y - last_y)/_dt);
-
-
-
-
- float val =  (get_rate_roll_pid().get_initial_kp())*((_motors.get_throttle_hover()-_motors.get_throttle()));
-
- _PID_scale = val;
-
- //get_rate_roll_pid().kP(val);
-
-
+    // move throttle vs attitude mixing towards desired (called from here because this is conveniently called on every iteration)
+    update_throttle_rpy_mix();
 
     Vector3f gyro_latest = _ahrs.get_gyro_latest();
     _motors.set_roll(rate_target_to_motor_roll(gyro_latest.x, _rate_target_ang_vel.x));
     _motors.set_pitch(rate_target_to_motor_pitch(gyro_latest.y, _rate_target_ang_vel.y));
     _motors.set_yaw(rate_target_to_motor_yaw(gyro_latest.z, _rate_target_ang_vel.z));
 
-	 last_x = _ang_accel_ffx_filt_input.get();
-	 last_y = _ang_accel_ffy_filt_input.get();
-
-	// _accel_ang_ff.x = _ang_accel_ffx_filt_input.get();
-	// _accel_ang_ff.y = _ang_accel_ffy_filt_input.get();
-
     control_monitor_update();
-
 }
 
 // sanity check parameters.  should be called once before takeoff

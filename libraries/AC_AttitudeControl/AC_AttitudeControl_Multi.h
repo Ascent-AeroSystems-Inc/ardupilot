@@ -6,17 +6,15 @@
 #include "AC_AttitudeControl.h"
 #include <AP_Motors/AP_MotorsMulticopter.h>
 
-#define AP_MOTORS_ANG_ACCEL_FF_FILTER_HZ  20.0f
-
 // default rate controller PID gains
 #ifndef AC_ATC_MULTI_RATE_RP_P
-  # define AC_ATC_MULTI_RATE_RP_P           0.25f
+  # define AC_ATC_MULTI_RATE_RP_P           0.135f
 #endif
 #ifndef AC_ATC_MULTI_RATE_RP_I
-  # define AC_ATC_MULTI_RATE_RP_I           0.15f
+  # define AC_ATC_MULTI_RATE_RP_I           0.090f
 #endif
 #ifndef AC_ATC_MULTI_RATE_RP_D
-  # define AC_ATC_MULTI_RATE_RP_D           0.01f
+  # define AC_ATC_MULTI_RATE_RP_D           0.0036f
 #endif
 #ifndef AC_ATC_MULTI_RATE_RP_IMAX
  # define AC_ATC_MULTI_RATE_RP_IMAX         0.5f
@@ -25,7 +23,7 @@
  # define AC_ATC_MULTI_RATE_RP_FILT_HZ      20.0f
 #endif
 #ifndef AC_ATC_MULTI_RATE_YAW_P
- # define AC_ATC_MULTI_RATE_YAW_P           0.09f
+ # define AC_ATC_MULTI_RATE_YAW_P           0.180f
 #endif
 #ifndef AC_ATC_MULTI_RATE_YAW_I
  # define AC_ATC_MULTI_RATE_YAW_I           0.018f
@@ -37,7 +35,7 @@
  # define AC_ATC_MULTI_RATE_YAW_IMAX        0.5f
 #endif
 #ifndef AC_ATC_MULTI_RATE_YAW_FILT_HZ
- # define AC_ATC_MULTI_RATE_YAW_FILT_HZ     2.0f
+ # define AC_ATC_MULTI_RATE_YAW_FILT_HZ     2.5f
 #endif
 
 
@@ -82,13 +80,6 @@ public:
 
     // user settable parameters
     static const struct AP_Param::GroupInfo var_info[];
-
-    LowPassFilterFloat  _ang_accel_ffx_filt;
-    LowPassFilterFloat  _ang_accel_ffy_filt;
-
-    LowPassFilterFloat  _ang_accel_ffx_filt_input;
-    LowPassFilterFloat  _ang_accel_ffy_filt_input;
-
 
 protected:
 
