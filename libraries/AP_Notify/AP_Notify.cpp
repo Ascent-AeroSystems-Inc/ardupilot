@@ -15,7 +15,6 @@
 
 #include "AP_Notify.h"
 
-
 #include "AP_BoardLED.h"
 #include "PixRacerLED.h"
 #include "Buzzer.h"
@@ -34,8 +33,6 @@
 #include "UAVCAN_RGB_LED.h"
 #include <stdio.h>
 #include "AP_BoardLED2.h"
-
-
 
 extern const AP_HAL::HAL& hal;
 
@@ -175,16 +172,10 @@ AP_Notify::AP_Notify()
         AP_HAL::panic("AP_Notify must be singleton");
     }
     _instance = this;
-
-
 }
 
 // static flags, to allow for direct class update from device drivers
 struct AP_Notify::notify_flags_and_values_type AP_Notify::flags;
-
-
-//AP_Notify::flags.backend1 = false;
-
 struct AP_Notify::notify_events_type AP_Notify::events;
 
 NotifyDevice *AP_Notify::_devices[CONFIG_NOTIFY_DEVICES_MAX];
@@ -192,7 +183,6 @@ uint8_t AP_Notify::_num_devices;
 
 void AP_Notify::add_backend_helper(NotifyDevice *backend)
 {
-
     _devices[_num_devices] = backend;
     _devices[_num_devices]->pNotify = this;
     if(!_devices[_num_devices]->init()) {
@@ -242,33 +232,32 @@ void AP_Notify::add_backends(void)
                 ADD_BACKEND(new AP_BoardLED());
   #else
                 ADD_BACKEND(new VRBoard_LED());
- #endif  //CONFIG_HAL_BOARD != HAL_BOARD_VRBRAIN || CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_VRBRAIN_V45
+ #endif // CONFIG_HAL_BOARD != HAL_BOARD_VRBRAIN || CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_VRBRAIN_V45
 #elif (defined(HAL_GPIO_A_LED_PIN) && defined(HAL_GPIO_B_LED_PIN))
                 ADD_BACKEND(new AP_BoardLED2());
 #endif
                 break;
             case Notify_LED_ToshibaLED_I2C_Internal:
-               ADD_BACKEND(new ToshibaLED_I2C(TOSHIBA_LED_I2C_BUS_INTERNAL));
+                ADD_BACKEND(new ToshibaLED_I2C(TOSHIBA_LED_I2C_BUS_INTERNAL));
                 break;
             case Notify_LED_ToshibaLED_I2C_External:
-               ADD_BACKEND(new ToshibaLED_I2C(TOSHIBA_LED_I2C_BUS_EXTERNAL));
+                ADD_BACKEND(new ToshibaLED_I2C(TOSHIBA_LED_I2C_BUS_EXTERNAL));
                 break;
 #if !HAL_MINIMIZE_FEATURES
             case Notify_LED_NCP5623_I2C_External:
                 FOREACH_I2C_EXTERNAL(b) {
-                ADD_BACKEND(new NCP5623(b));
+                    ADD_BACKEND(new NCP5623(b));
                 }
                 break;
             case Notify_LED_NCP5623_I2C_Internal:
-               ADD_BACKEND(new NCP5623(TOSHIBA_LED_I2C_BUS_INTERNAL));
+                ADD_BACKEND(new NCP5623(TOSHIBA_LED_I2C_BUS_INTERNAL));
                 break;
 #endif
-//#if !HAL_MINIMIZE_FEATURES
+#if !HAL_MINIMIZE_FEATURES
             case Notify_LED_PCA9685LED_I2C_External:
-
                 ADD_BACKEND(new PCA9685LED_I2C());
                 break;
-//#endif
+#endif
             case Notify_LED_OreoLED:
                 // OreoLED's are PX4-v3 build only
 #if (CONFIG_HAL_BOARD == HAL_BOARD_PX4) && (CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_PX4_V3)
@@ -345,8 +334,6 @@ void AP_Notify::init(bool dummy)
 // main update function, called at 50Hz
 void AP_Notify::update(void)
 {
-
-
     for (uint8_t i = 0; i < _num_devices; i++) {
         if (_devices[i] != nullptr) {
             _devices[i]->update();
