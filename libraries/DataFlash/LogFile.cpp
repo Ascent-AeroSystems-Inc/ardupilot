@@ -1372,8 +1372,6 @@ void DataFlash_Class::Log_Write_Attitude(AP_AHRS &ahrs, const Vector3f &targets)
         yaw             : (uint16_t)ahrs.yaw_sensor,
         error_rp        : (uint16_t)(ahrs.get_error_rp() * 100),
         error_yaw       : (uint16_t)(ahrs.get_error_yaw() * 100)
-
-
     };
     WriteBlock(&pkt, sizeof(pkt));
 }
@@ -1392,7 +1390,6 @@ void DataFlash_Class::Log_Write_AttitudeView(AP_AHRS_View &ahrs, const Vector3f 
         yaw             : (uint16_t)ahrs.yaw_sensor,
         error_rp        : (uint16_t)(ahrs.get_error_rp() * 100),
         error_yaw       : (uint16_t)(ahrs.get_error_yaw() * 100)
-
     };
     WriteBlock(&pkt, sizeof(pkt));
 }
@@ -1628,11 +1625,7 @@ void DataFlash_Class::Log_Write_Rate(const AP_AHRS &ahrs,
                                      const AC_PosControl &pos_control)
 {
     const Vector3f &rate_targets = attitude_control.rate_bf_targets();
-   // const Vector3f &accel_target = pos_control.get_accel_target();
-    const Vector3f &accel_FF_target = attitude_control.accel_FF();
-
-   // const float pid_update = attitude_control._PID_scale;
-
+    const Vector3f &accel_target = pos_control.get_accel_target();
     struct log_Rate pkt_rate = {
         LOG_PACKET_HEADER_INIT(LOG_RATE_MSG),
         time_us         : AP_HAL::micros64(),
@@ -1645,15 +1638,9 @@ void DataFlash_Class::Log_Write_Rate(const AP_AHRS &ahrs,
         control_yaw     : degrees(rate_targets.z),
         yaw             : degrees(ahrs.get_gyro().z),
         yaw_out         : motors.get_yaw(),
-       // control_accel   : (float)accel_target.z,
-		pid_update		:   attitude_control._PID_scale,
-     //   accel           : (float)(-(ahrs.get_accel_ef_blended().z + GRAVITY_MSS) * 100.0f),
-      //  accel_out       : motors.get_throttle(),
-
-		accel_x_ff		: accel_FF_target.x,
-		accel_y_ff		: accel_FF_target.y
-
-
+        control_accel   : (float)accel_target.z,
+        accel           : (float)(-(ahrs.get_accel_ef_blended().z + GRAVITY_MSS) * 100.0f),
+        accel_out       : motors.get_throttle()
     };
     WriteBlock(&pkt_rate, sizeof(pkt_rate));
 }
