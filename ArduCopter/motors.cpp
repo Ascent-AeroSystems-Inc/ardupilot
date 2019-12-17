@@ -259,8 +259,6 @@ void Copter::init_disarm_motors()
         return;
     }
 
-    motors->cut_motor_power(false);
-
 #if HIL_MODE != HIL_MODE_DISABLED || CONFIG_HAL_BOARD == HAL_BOARD_SITL
     gcs().send_text(MAV_SEVERITY_INFO, "Disarming motors");
 #endif

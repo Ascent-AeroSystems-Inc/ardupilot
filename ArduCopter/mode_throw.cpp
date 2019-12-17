@@ -170,6 +170,7 @@ void Copter::ModeThrow::run()
     		timer =  ((float)AP_HAL::millis()) - start_time;
     	}else{
     		start_time = ((float)AP_HAL::millis());
+    		timer = 0;
     	}
 
         // demand a level roll/pitch attitude with zero yaw rate
@@ -200,16 +201,16 @@ void Copter::ModeThrow::run()
     // log at 10hz or if stage changes
     //changed logging to 20Hz
     uint32_t now = AP_HAL::millis();
-    if ((stage != prev_stage) || (now - last_log_ms) > 50) {
+    if ((stage != prev_stage) || (now - last_log_ms) > 20) {
         prev_stage = stage;
         last_log_ms = now;
         const float log_timer = timer;
         const float velocity_z = inertial_nav.get_velocity().z;
         const float accel = copter.ins.get_accel().z;
         const float ef_accel_z = ahrs.get_accel_ef().z;
-        const bool launch_detect = (stage > Launch_Detecting) || Launch_detected();
-        const bool pwr_on = (stage > Launch_Wait_for_PowerUp) || Power_On();
-        const bool stabilize = (stage > Launch_Stabilizing) || Check_Stabilized();
+        const bool launch_detect = (stage > Launch_Detecting);// || Launch_detected();
+        const bool pwr_on = (stage > Launch_Wait_for_PowerUp);// || Power_On();
+        const bool stabilize = (stage > Launch_Stabilizing);// || Check_Stabilized();
         const bool alt_ok = (stage == Launch_AltHold);
         DataFlash_Class::instance()->Log_Write(
             "THRO",
@@ -256,7 +257,7 @@ bool Copter::ModeThrow::Power_On()
 	}else if(timer >= g.launch_timeout){
 
 	    // power on if the timer is over the timeout period
-		gcs().send_text(MAV_SEVERITY_INFO,"Pwr: Time-Out");
+		gcs().send_text(MAV_SEVERITY_INFO,"Pwr Time-Out");
 		timer = 0.0f;
 		start_time = ((float)AP_HAL::millis());
 		return true;
@@ -264,9 +265,9 @@ bool Copter::ModeThrow::Power_On()
 	}else{
 
 		// power on if the timer is over the hold period and the minimum velocity is deteched
-		if(fabsf(inertial_nav.get_velocity().z) <= g.min_velo_z_on){
+		if(inertial_nav.get_velocity().z <= g.min_velo_z_on){
 
-			gcs().send_text(MAV_SEVERITY_INFO,"Pwr: Vz");
+			gcs().send_text(MAV_SEVERITY_INFO,"Pwr Vz");
 			timer = 0.0f;
 			start_time = ((float)AP_HAL::millis());
 			return true;
@@ -280,11 +281,6 @@ bool Copter::ModeThrow::Power_On()
 bool Copter::ModeThrow::Check_Stabilized()
 {
 
-	if(stage < Launch_Stabilizing){
-
-		return false;
-	}
-
 	//criteria for being upright
 
 	 if((labs(ahrs.roll_sensor) < g.stab_angle_cd) and (labs(ahrs.pitch_sensor) < g.stab_angle_cd)){
@@ -293,7 +289,7 @@ bool Copter::ModeThrow::Check_Stabilized()
 		stable = false;
 	}
 
-	if(timer >= g.min_dwell) {
+	if(timer >= g.min_dwell and stage ==Launch_Stabilizing) {
 
 		timer = 0.0f;
 		start_time = ((float)AP_HAL::millis());

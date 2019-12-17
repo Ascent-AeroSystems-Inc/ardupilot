@@ -130,15 +130,6 @@ void AP_MotorsCoax::output_to_motors()
             }
 
 
-            if(_cut_motor_power){
-                rc_write(AP_MOTORS_MOT_3, calc_thrust_to_pwm(0));
-                rc_write(AP_MOTORS_MOT_4, calc_thrust_to_pwm(0));
-                break;
-
-            }
-
-
-
             if(_spool_up_complete){
                 rc_write(AP_MOTORS_MOT_3, calc_thrust_to_pwm(_thrust_yt_cw));
                 rc_write(AP_MOTORS_MOT_4, calc_thrust_to_pwm(_thrust_yt_ccw));
@@ -152,7 +143,7 @@ void AP_MotorsCoax::output_to_motors()
                 _aft_rotor_start = 0;
                 _spool_up_complete = false;
 
-                if(_spin_up_ratio >= 0.99f){
+                if(_spin_up_ratio >= 0.990f){
                 	_delay_aft_rotor = false;
                 }
 

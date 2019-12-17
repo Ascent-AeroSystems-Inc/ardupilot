@@ -181,10 +181,6 @@ AP_Notify::AP_Notify()
 
 // static flags, to allow for direct class update from device drivers
 struct AP_Notify::notify_flags_and_values_type AP_Notify::flags;
-
-
-//AP_Notify::flags.backend1 = false;
-
 struct AP_Notify::notify_events_type AP_Notify::events;
 
 NotifyDevice *AP_Notify::_devices[CONFIG_NOTIFY_DEVICES_MAX];
@@ -211,7 +207,6 @@ void AP_Notify::add_backends(void)
     if (_num_devices != 0) {
         return;
     }
-
 
     for (uint32_t i = 1; i < Notify_LED_MAX; i = i << 1) {
         switch(_led_type & i) {
@@ -263,12 +258,12 @@ void AP_Notify::add_backends(void)
                ADD_BACKEND(new NCP5623(TOSHIBA_LED_I2C_BUS_INTERNAL));
                 break;
 #endif
-//#if !HAL_MINIMIZE_FEATURES
+#if !HAL_MINIMIZE_FEATURES
             case Notify_LED_PCA9685LED_I2C_External:
 
                 ADD_BACKEND(new PCA9685LED_I2C());
                 break;
-//#endif
+#endif
             case Notify_LED_OreoLED:
                 // OreoLED's are PX4-v3 build only
 #if (CONFIG_HAL_BOARD == HAL_BOARD_PX4) && (CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_PX4_V3)

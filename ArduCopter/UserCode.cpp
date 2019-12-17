@@ -7,9 +7,6 @@ void Copter::userhook_init()
     // this will be called once at start-up
 
 
-
-
-
 }
 #endif
 
@@ -27,42 +24,6 @@ void Copter::userhook_FastLoop()
 void Copter::userhook_50Hz()
 {
     // put your 50Hz code here
-
-/*
-	if(!motors->armed()){
-
-		CoaxState = Disarm;
-
-	} else if(ap.land_complete){
-
-		CoaxState = Land;
-
-	}else if(CoaxState == Takeoff){
-
-
-
-		CoaxState = Hover;
-
-
-	}else if(CoaxState == Takeoff)
-
-if(CoaxState == Disarm){
-
-
-	if(motors->armed()){
-
-		CoaxState = Takeoff;
-
-	}
-
-}else if(CoaxState == Takeoff){
-
-
-
-}
-
-*/
-
 
 
 }
@@ -102,15 +63,12 @@ void Copter::userhook_MediumLoop()
 			 if(killswitch_counter >= 5){
 
 				 init_disarm_motors();
-				 motors->cut_motor_power(false);
 				 killswitch_counter = 0;
 				 gcs().send_text(MAV_SEVERITY_CRITICAL,"KillSwitch: Disarm");
 				 Log_Write_Event(DATA_KILLSWITCH_DISARM);
 				 return;
 
 			 }else if(killswitch_counter >= 2){
-
-					 motors->cut_motor_power(true);
 					 killswitch_counter++;
 
 			 }else{

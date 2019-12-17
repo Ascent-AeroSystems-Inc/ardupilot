@@ -228,14 +228,6 @@ public:
     float get_throttle_in() const { return _throttle_in; }
 
 
-
-
-    // Return angular velocity in radians used in the angular velocity controller
-    Vector3f accel_FF() const { return _accel_ang_ff; }
-
-    float _PID_scale;
-
-
     // Return throttle increase applied for tilt compensation
     float angle_boost() const { return _angle_boost; }
 
@@ -412,10 +404,6 @@ protected:
     // mix between throttle and hover throttle for 0 to 1 and ratio above hover throttle for >1
     float               _throttle_rpy_mix;
 
-    float last_x;
-    float last_y;
-
-    Vector3f _accel_ang_ff;
 
 
 

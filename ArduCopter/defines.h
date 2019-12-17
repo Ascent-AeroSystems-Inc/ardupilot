@@ -208,18 +208,6 @@ enum AutoMode {
 };
 
 
-// Auto modes
-enum VehicleState {
-    Disarm,
-	Land,
-    Takeoff,
-    Hover,
-    Transition,
-    Fwd_Flight,
-    Brake,
-	None,
-};
-
 
 
 // Guided modes

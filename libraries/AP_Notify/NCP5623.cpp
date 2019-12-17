@@ -23,9 +23,9 @@
 
 extern const AP_HAL::HAL& hal;
 
-#define NCP5623_LED_BRIGHT  0x1f    // full brightness
+#define NCP5623_LED_BRIGHT  0x1F    // full brightness
 #define NCP5623_LED_MEDIUM  0x18    // medium brightness
-#define NCP5623_LED_DIM     0x0f    // dim
+#define NCP5623_LED_DIM     0x0F    // dim
 #define NCP5623_LED_OFF     0x00    // off
 
 #define NCP5623_LED_I2C_ADDR 0x38    // default I2C bus address

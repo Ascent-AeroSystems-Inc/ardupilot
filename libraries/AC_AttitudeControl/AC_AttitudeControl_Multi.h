@@ -83,12 +83,6 @@ public:
     // user settable parameters
     static const struct AP_Param::GroupInfo var_info[];
 
-    LowPassFilterFloat  _ang_accel_ffx_filt;
-    LowPassFilterFloat  _ang_accel_ffy_filt;
-
-    LowPassFilterFloat  _ang_accel_ffx_filt_input;
-    LowPassFilterFloat  _ang_accel_ffy_filt_input;
-
 
 protected:
 

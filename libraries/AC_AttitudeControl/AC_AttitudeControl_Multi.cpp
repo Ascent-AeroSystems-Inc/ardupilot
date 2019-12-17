@@ -2,7 +2,7 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Math/AP_Math.h>
 
-#define AP_MOTORS_ANG_ACCEL_FF_FILTER_HZ  10.0f
+//#define AP_MOTORS_ANG_ACCEL_FF_FILTER_HZ  10.0f
 
 // table of user settable parameters
 const AP_Param::GroupInfo AC_AttitudeControl_Multi::var_info[] = {
@@ -177,23 +177,6 @@ AC_AttitudeControl_Multi::AC_AttitudeControl_Multi(AP_AHRS_View &ahrs, const AP_
 {
     AP_Param::setup_object_defaults(this, var_info);
 
-
-    //setup angular accel FF filtering
-    _ang_accel_ffx_filt.set_cutoff_frequency(AP_MOTORS_ANG_ACCEL_FF_FILTER_HZ);
-    _ang_accel_ffx_filt.reset(0.0f);
-    _ang_accel_ffy_filt.set_cutoff_frequency(AP_MOTORS_ANG_ACCEL_FF_FILTER_HZ);
-    _ang_accel_ffy_filt.reset(0.0f);
-
-    _ang_accel_ffx_filt_input.set_cutoff_frequency(AP_MOTORS_ANG_ACCEL_FF_FILTER_HZ);
-    _ang_accel_ffx_filt_input.reset(0.0f);
-    _ang_accel_ffy_filt_input.set_cutoff_frequency(AP_MOTORS_ANG_ACCEL_FF_FILTER_HZ);
-    _ang_accel_ffy_filt_input.reset(0.0f);
-
-
-
-    _accel_ang_ff.x = 0.0f;
-    _accel_ang_ff.y = 0.0f;
-
 }
 
 // Update Alt_Hold angle maximum
@@ -275,49 +258,12 @@ void AC_AttitudeControl_Multi::update_throttle_rpy_mix()
 void AC_AttitudeControl_Multi::rate_controller_run()
 {
 
-   // update_throttle_rpy_mix();
-
-if(_dt > 0.0f){
-	_ang_accel_ffx_filt_input.apply(_rate_target_ang_vel.x, _dt);
-	_ang_accel_ffy_filt_input.apply(_rate_target_ang_vel.y, _dt);
-	 }
-
-
-	_accel_ang_ff.x= (_ang_accel_ffx_filt_input.get() - last_x)/_dt;
-	_accel_ang_ff.y = (_ang_accel_ffy_filt_input.get() - last_y)/_dt;
-
-/*
- if(_dt > 0.0f){
-
-	_ang_accel_ffx_filt.apply((_rate_target_ang_vel.x - last_x)/_dt, _dt);
-	_ang_accel_ffy_filt.apply((_rate_target_ang_vel.y - last_y)/_dt, _dt);
-
-	 }
-	 */
-
-	//_ang_accel_ffy_filt.apply((_rate_target_ang_vel.y - last_y)/_dt);
-
-
-
-
- float val =  (get_rate_roll_pid().get_initial_kp())*((_motors.get_throttle_hover()-_motors.get_throttle()));
-
- _PID_scale = val;
-
- //get_rate_roll_pid().kP(val);
-
-
+update_throttle_rpy_mix();
 
     Vector3f gyro_latest = _ahrs.get_gyro_latest();
     _motors.set_roll(rate_target_to_motor_roll(gyro_latest.x, _rate_target_ang_vel.x));
     _motors.set_pitch(rate_target_to_motor_pitch(gyro_latest.y, _rate_target_ang_vel.y));
     _motors.set_yaw(rate_target_to_motor_yaw(gyro_latest.z, _rate_target_ang_vel.z));
-
-	 last_x = _ang_accel_ffx_filt_input.get();
-	 last_y = _ang_accel_ffy_filt_input.get();
-
-	// _accel_ang_ff.x = _ang_accel_ffx_filt_input.get();
-	// _accel_ang_ff.y = _ang_accel_ffy_filt_input.get();
 
     control_monitor_update();
 

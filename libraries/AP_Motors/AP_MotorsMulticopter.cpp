@@ -223,20 +223,6 @@ void AP_MotorsMulticopter::output()
     output_logic();
 
     // calculate thrust
-
-    /*
-    if(_cut_motor_power){
-
-    	output_armed_stabilizing();
-
-    }else{
-
-    	output_disarmed_stabilizing();
-
-    }
-*/
-
-
    output_armed_stabilizing();
 
     // apply any thrust compensation for the frame
