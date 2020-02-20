@@ -135,16 +135,12 @@ void PCA9685LED_I2C::_timer(void)
 	    _need_update = false;
 
 
-
-
-
-
-	    uint16_t red_1_adjusted = rgb.r * 0x10;
-	    uint16_t green_1_adjusted = rgb.g * 0x10;
-	    uint16_t blue_1_adjusted = rgb.b * 0x10;
-	 //   uint16_t red_2_adjusted = rgb.r_2 * 0x10;
-	  //  uint16_t green_2_adjusted = rgb.g_2 * 0x10;
-	   // uint16_t blue_2_adjusted = rgb.b_2 * 0x10;
+	    uint16_t red_1_adjusted = rgb.r_1 * 0x10;
+	    uint16_t green_1_adjusted = rgb.g_1 * 0x10;
+	    uint16_t blue_1_adjusted = rgb.b_1 * 0x10;
+	    uint16_t red_2_adjusted = rgb.r_2 * 0x10;
+	    uint16_t green_2_adjusted = rgb.g_2 * 0x10;
+	   uint16_t blue_2_adjusted = rgb.b_2 * 0x10;
 
 
 
@@ -161,36 +157,36 @@ void PCA9685LED_I2C::_timer(void)
 	    uint8_t red_1_channel_msb = red_1_adjusted >> 8;
 
 
-	  //  uint8_t blue_2_channel_lsb = blue_2_adjusted & 0xFF;
-	  //  uint8_t blue_2_channel_msb = blue_2_adjusted >> 8;
+	    uint8_t blue_2_channel_lsb = blue_2_adjusted & 0xFF;
+	   uint8_t blue_2_channel_msb = blue_2_adjusted >> 8;
 
-	   // uint8_t green_2_channel_lsb = green_2_adjusted & 0xFF;
-	   // uint8_t green_2_channel_msb = green_2_adjusted >> 8;
+	    uint8_t green_2_channel_lsb = green_2_adjusted & 0xFF;
+	    uint8_t green_2_channel_msb = green_2_adjusted >> 8;
 
-	  //  uint8_t red_2_channel_lsb = red_2_adjusted & 0xFF;
-	  //  uint8_t red_2_channel_msb = red_2_adjusted >> 8;
+	    uint8_t red_2_channel_lsb = red_2_adjusted & 0xFF;
+	    uint8_t red_2_channel_msb = red_2_adjusted >> 8;
 
 
 
-	  //  uint8_t white_channel_lsb = white_adjusted & 0xFF;
+	   // uint8_t white_channel_lsb = white_adjusted & 0xFF;
 	   // uint8_t white_channel_msb = white_adjusted >> 8;
 
 
-	    uint8_t transaction[] = {PCA9685_PWM_1, 0x00, 0x00, blue_1_channel_lsb, blue_1_channel_msb,
+	    uint8_t transaction[] = {PCA9685_PWM_1, 0x00, 0x00, red_1_channel_lsb, red_1_channel_msb,
 				     	 	 	 	 	 	 	0x00, 0x00, green_1_channel_lsb, green_1_channel_msb,
-												0x00, 0x00, red_1_channel_lsb, red_1_channel_msb,
-
 												0x00, 0x00, blue_1_channel_lsb, blue_1_channel_msb,
-				     	 	 	 	 	 	 	0x00, 0x00, green_1_channel_lsb, green_1_channel_msb,
-												0x00, 0x00, red_1_channel_lsb, red_1_channel_msb //,
 
-												//0x00, 0x00, blue_2_channel_lsb, blue_2_channel_msb,
-				     	 	 	 	 	 	 //	0x00, 0x00, green_2_channel_lsb, green_2_channel_msb,
-												//0x00, 0x00, red_2_channel_lsb, red_2_channel_msb,
+												0x00, 0x00, red_1_channel_lsb, red_1_channel_msb,
+												0x00, 0x00, green_1_channel_lsb, green_1_channel_msb,
+												0x00, 0x00, blue_1_channel_lsb, blue_1_channel_msb,
 
-												//0x00, 0x00, blue_2_channel_lsb, blue_2_channel_msb,
-				     	 	 	 	 	 	 	//0x00, 0x00, green_2_channel_lsb, green_2_channel_msb,
-												/*0x00, 0x00, red_2_channel_lsb, red_2_channel_msb*/ };
+												0x00, 0x00, red_2_channel_lsb, red_2_channel_msb,
+												0x00, 0x00, green_2_channel_lsb, green_2_channel_msb,
+												0x00, 0x00, blue_2_channel_lsb, blue_2_channel_msb,
+
+												0x00, 0x00, red_2_channel_lsb, red_2_channel_msb,
+												0x00, 0x00, green_2_channel_lsb, green_2_channel_msb,
+												0x00, 0x00, blue_2_channel_lsb, blue_2_channel_msb};
 
 
 

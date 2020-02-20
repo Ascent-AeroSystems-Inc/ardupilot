@@ -73,12 +73,12 @@ protected:
     uint8_t _red_des, _green_des, _blue_des;     // color requested by timed update
 
     uint8_t _red_des_1, _green_des_1, _blue_des_1;     // color requested by timed update
-   // uint8_t _red_des_2, _green_des_2, _blue_des_2;     // color requested by timed update
+    uint8_t _red_des_2, _green_des_2, _blue_des_2;     // color requested by timed update
 
     uint8_t _red_curr, _green_curr, _blue_curr;  // current colours displayed by the led
 
     uint8_t _red_curr_1, _green_curr_1, _blue_curr_1;  // current colours displayed by the led
-   // uint8_t _red_curr_2, _green_curr_2, _blue_curr_2;  // current colours displayed by the led
+    uint8_t _red_curr_2, _green_curr_2, _blue_curr_2;  // current colours displayed by the led
 
     uint8_t _led_off;
     uint8_t _led_bright;
