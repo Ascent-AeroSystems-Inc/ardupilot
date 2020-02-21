@@ -20,11 +20,20 @@
 #include <AP_HAL/AP_HAL.h>
 
 //#include <stdio.h>
-
+/*
 #define NAVIO_LED_BRIGHT 0xFF    // full brightness
 #define NAVIO_LED_MEDIUM 0x7F    // medium brightness
 #define NAVIO_LED_DIM    0x4F    // dim brightness
 #define NAVIO_LED_OFF    0x00    // off
+*/
+
+
+
+#define NAVIO_LED_BRIGHT 0x0    // full brightness
+#define NAVIO_LED_MEDIUM 0x7F    // medium brightness
+#define NAVIO_LED_DIM    0x4F    // dim brightness
+#define NAVIO_LED_OFF    0xFF    // off
+
 
 #define PCA9685_ADDRESS 0x40
 #define PCA9685_MODE1 0x00
