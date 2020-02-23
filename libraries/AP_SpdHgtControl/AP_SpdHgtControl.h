@@ -10,10 +10,9 @@
   own class.
  */
 
-#include <AP_Common/AP_Common.h>
-#include <AP_Param/AP_Param.h>
-#include <AP_Logger/AP_Logger.h>
 #include <AP_Vehicle/AP_Vehicle.h>
+
+#include <stdint.h>
 
 class AP_SpdHgtControl {
 public:
@@ -63,6 +62,9 @@ public:
 
 	// set path_proportion accessor
     virtual void set_path_proportion(float path_proportion) = 0;
+
+    // reset on next loop
+    virtual void reset(void) = 0;
 
 	// add new controllers to this enum. Users can then
 	// select which controller to use by setting the

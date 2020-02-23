@@ -74,7 +74,7 @@ def get_default_params(atype, binary):
         util.pexpect_close(sitl)
         sitl = util.start_SITL(binary, model=frame, home=home, speedup=10)
         mavproxy = util.start_MAVProxy_SITL(atype)
-        idx = mavproxy.expect('Saved [0-9]+ parameters to (\S+)')
+        mavproxy.expect('Saved [0-9]+ parameters to (\S+)')
     parmfile = mavproxy.match.group(1)
     dest = buildlogs_path('%s-defaults.parm' % atype)
     shutil.copy(parmfile, dest)
@@ -251,6 +251,8 @@ def should_run_step(step):
 
 __bin_names = {
     "ArduCopter": "arducopter",
+    "ArduCopterTests1": "arducopter",
+    "ArduCopterTests2": "arducopter",
     "ArduPlane": "arduplane",
     "APMrover2": "ardurover",
     "AntennaTracker": "antennatracker",
@@ -302,6 +304,8 @@ def find_specific_test_to_run(step):
 
 tester_class_map = {
     "fly.ArduCopter": arducopter.AutoTestCopter,
+    "fly.ArduCopterTests1": arducopter.AutoTestCopterTests1,
+    "fly.ArduCopterTests2": arducopter.AutoTestCopterTests2,
     "fly.ArduPlane": arduplane.AutoTestPlane,
     "fly.QuadPlane": quadplane.AutoTestQuadPlane,
     "drive.APMrover2": apmrover2.AutoTestRover,
@@ -378,8 +382,10 @@ def run_step(step):
         "use_map": opts.map,
         "valgrind": opts.valgrind,
         "gdb": opts.gdb,
+        "lldb": opts.lldb,
         "gdbserver": opts.gdbserver,
         "breakpoints": opts.breakpoint,
+        "disable_breakpoints": opts.disable_breakpoints,
         "frame": opts.frame,
         "_show_test_timings": opts.show_test_timings,
     }
@@ -680,6 +686,10 @@ if __name__ == "__main__":
                       action="store_true",
                       default=False,
                       help="show how long each test took to run")
+    parser.add_option("--validate-parameters",
+                      action="store_true",
+                      default=False,
+                      help="validate vehicle parameter files")
 
     group_build = optparse.OptionGroup(parser, "Build options")
     group_build.add_option("--no-configure",
@@ -722,11 +732,19 @@ if __name__ == "__main__":
                          default=False,
                          action='store_true',
                          help='run ArduPilot binaries under gdbserver')
+    group_sim.add_option("--lldb",
+                         default=False,
+                         action='store_true',
+                         help='run ArduPilot binaries under lldb')
     group_sim.add_option("-B", "--breakpoint",
                          type='string',
                          action="append",
                          default=[],
                          help="add a breakpoint at given location in debugger")
+    group_sim.add_option("--disable-breakpoints",
+                         default=False,
+                         action='store_true',
+                         help="disable all breakpoints before starting")
     parser.add_option_group(group_sim)
 
     opts, args = parser.parse_args()
@@ -770,6 +788,11 @@ if __name__ == "__main__":
         'convertgpx',
     ]
 
+    moresteps = [
+        'fly.ArduCopterTests1',
+        'fly.ArduCopterTests2',
+    ]
+
     skipsteps = opts.skip.split(',')
 
     # ensure we catch timeouts
@@ -802,6 +825,9 @@ if __name__ == "__main__":
             x = find_specific_test_to_run(a)
             if x is not None:
                 matches.append(x)
+
+            if a in moresteps:
+                matches.append(a)
 
             if not len(matches):
                 print("No steps matched {}".format(a))

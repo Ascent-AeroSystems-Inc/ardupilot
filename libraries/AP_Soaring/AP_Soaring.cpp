@@ -1,4 +1,5 @@
 #include "AP_Soaring.h"
+#include <AP_Logger/AP_Logger.h>
 #include <GCS_MAVLink/GCS.h>
 #include <stdint.h>
 extern const AP_HAL::HAL& hal;
@@ -24,7 +25,6 @@ const AP_Param::GroupInfo SoaringController::var_info[] = {
     // @Param: Q1
     // @DisplayName: Process noise
     // @Description: Standard deviation of noise in process for strength
-    // @Units:
     // @Range: 0 10
     // @User: Advanced
     AP_GROUPINFO("Q1", 3, SoaringController, thermal_q1, 0.001f),
@@ -32,7 +32,6 @@ const AP_Param::GroupInfo SoaringController::var_info[] = {
     // @Param: Q2
     // @DisplayName: Process noise
     // @Description: Standard deviation of noise in process for position and radius
-    // @Units:
     // @Range: 0 10
     // @User: Advanced
     AP_GROUPINFO("Q2", 4, SoaringController, thermal_q2, 0.03f),
@@ -40,7 +39,6 @@ const AP_Param::GroupInfo SoaringController::var_info[] = {
     // @Param: R
     // @DisplayName: Measurement noise
     // @Description: Standard deviation of noise in measurement
-    // @Units:
     // @Range: 0 10
     // @User: Advanced
 
@@ -73,7 +71,6 @@ const AP_Param::GroupInfo SoaringController::var_info[] = {
     // @Param: POLAR_CD0
     // @DisplayName: Zero lift drag coef.
     // @Description: Zero lift drag coefficient
-    // @Units:
     // @Range: 0 0.5
     // @User: Advanced
     AP_GROUPINFO("POLAR_CD0", 9, SoaringController, polar_CD0, 0.027),
@@ -81,7 +78,6 @@ const AP_Param::GroupInfo SoaringController::var_info[] = {
     // @Param: POLAR_B
     // @DisplayName: Induced drag coeffient
     // @Description: Induced drag coeffient
-    // @Units:
     // @Range: 0 0.5
     // @User: Advanced
     AP_GROUPINFO("POLAR_B", 10, SoaringController, polar_B, 0.031),
