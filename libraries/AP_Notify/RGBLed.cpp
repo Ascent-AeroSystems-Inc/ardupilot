@@ -809,7 +809,10 @@ void RGBLed::update()
 
     if (!pNotify->_rgb_led_override) {
         update_colours();
-        set_rgb(_red_des_1, _green_des_1, _blue_des_1, _red_des_2, _green_des_2, _blue_des_2);
+       // set_rgb(_red_des_1, _green_des_1, _blue_des_1, _red_des_2, _green_des_2, _blue_des_2);
+
+        set_rgb(_red_des_1, _green_des_1, _blue_des_1);
+
     } else {
 
         update_override();

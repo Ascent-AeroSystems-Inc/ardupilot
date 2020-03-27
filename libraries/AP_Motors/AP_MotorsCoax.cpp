@@ -252,7 +252,7 @@ void AP_MotorsCoax::output_armed_stabilizing()
 	float yaw_headroom_available_min =  throttle_thrust - (0.5f *fabsf(yaw_thrust));			//// goes negative if you don't have enough headroom
 
 //handle running out of headroom
-   if( yaw_headroom_available_max  >=  0.0f   and   yaw_headroom_available_min  >=  0.0f){
+   if( yaw_headroom_available_max  >  0.0f   and   yaw_headroom_available_min  >  0.0f){
 
 		_thrust_yt_ccw = throttle_thrust + (0.5f * yaw_thrust);
 		_thrust_yt_cw = throttle_thrust - (0.5f * yaw_thrust);
@@ -260,6 +260,7 @@ void AP_MotorsCoax::output_armed_stabilizing()
    }else if(yaw_headroom_available_max  <=  0.0f){
 
 	   limit.yaw = true;
+	   limit.throttle_upper = true;
 
 			_thrust_yt_ccw = (throttle_thrust + (0.5f * yaw_thrust)) + yaw_headroom_available_max;
 			_thrust_yt_cw = (throttle_thrust - (0.5f * yaw_thrust)) + yaw_headroom_available_max;
@@ -267,6 +268,7 @@ void AP_MotorsCoax::output_armed_stabilizing()
   }else{
 
 	  limit.yaw = true;
+	  limit.throttle_lower = true;
 
 		_thrust_yt_ccw = (throttle_thrust + (0.5f * yaw_thrust)) - yaw_headroom_available_min;
 		_thrust_yt_cw = (throttle_thrust - (0.5f * yaw_thrust)) - yaw_headroom_available_min;

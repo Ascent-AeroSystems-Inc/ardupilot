@@ -45,10 +45,16 @@ void AP_RPM_Pin::irq_handler(uint8_t instance)
     // we don't accept pulses less than 100us. Using an irq for such
     // high RPM is too inaccurate, and it is probably just bounce of
     // the signal which we should ignore
+
     if (dt > 100 && dt < 1000*1000) {
         irq_state[instance].dt_sum += dt;
         irq_state[instance].dt_count++;
     }
+
+
+
+
+
 }
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_PX4 || CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
@@ -137,10 +143,17 @@ void AP_RPM_Pin::update(void)
                            state.instance==0?irq_handler0:irq_handler1);
 #else // other HALs
         hal.gpio->pinMode(last_pin, HAL_GPIO_INPUT);
-        hal.gpio->attach_interrupt(last_pin, state.instance==0?irq_handler0:irq_handler1,
-                                   HAL_GPIO_INTERRUPT_RISING);
+       // hal.gpio->attach_interrupt(last_pin, state.instance==0?irq_handler0:irq_handler1,
+         //                          HAL_GPIO_INTERRUPT_RISING);
+
+
+		hal.gpio->attach_interrupt(last_pin, state.instance==0?irq_handler0:irq_handler1,
+				HAL_GPIO_INTERRUPT_BOTH);
+
 #endif
     }
+
+
 
     if (irq_state[state.instance].dt_count > 0) {
         float dt_avg;
@@ -180,4 +193,6 @@ void AP_RPM_Pin::update(void)
         state.signal_quality = 0;
         state.rate_rpm = 0;
     }
+
+
 }
