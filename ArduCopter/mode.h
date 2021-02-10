@@ -36,6 +36,7 @@ public:
         ZIGZAG    =    24,  // ZIGZAG mode is able to fly in a zigzag manner with predefined point A and point B
         SYSTEMID  =    25,  // System ID mode produces automated system identification signals in the controllers
         AUTOROTATE =   26,  // Autonomous autorotation
+		TESTSTAND =    27,
     };
 
     // constructor
@@ -1512,3 +1513,31 @@ private:
 
 };
 #endif
+
+
+
+
+class ModeTestStand : public Mode {
+
+public:
+    // inherit constructor
+    using Mode::Mode;
+     void init() ;
+    virtual void run() override;
+
+    bool requires_GPS() const override { return false; }
+    bool has_manual_throttle() const override { return true; }
+    bool allows_arming(bool from_gcs) const override { return true; };
+    bool is_autopilot() const override { return false; }
+
+    bool activate;
+
+protected:
+
+    const char *name() const override { return "TESTSTAND"; }
+    const char *name4() const override { return "TEST"; }
+
+private:
+
+};
+

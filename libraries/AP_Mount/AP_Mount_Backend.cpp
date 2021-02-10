@@ -40,6 +40,8 @@ void AP_Mount_Backend::handle_mount_control(const mavlink_mount_control_t &packe
     control((int32_t)packet.input_a, (int32_t)packet.input_b, (int32_t)packet.input_c, _state._mode);
 }
 
+
+
 void AP_Mount_Backend::control(int32_t pitch_or_lat, int32_t roll_or_lon, int32_t yaw_or_alt, MAV_MOUNT_MODE mount_mode)
 {
     _frontend.set_mode(_instance, mount_mode);

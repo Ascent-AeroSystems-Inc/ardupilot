@@ -336,6 +336,15 @@ public:
     	_p_angle_roll.kP(gain);
     	_p_angle_pitch.kP(gain);}
 
+
+    void set_test_stand_passthough(bool en){
+
+
+    	_test_stand_passthough = en;
+    }
+
+   bool _test_stand_passthough = false;
+
 protected:
 
     // Update rate_target_ang_vel using attitude_error_rot_vec_rad

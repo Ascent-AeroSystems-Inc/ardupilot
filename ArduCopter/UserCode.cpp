@@ -189,12 +189,14 @@ if(motors->armed()){
 		//Looks for issues with startup
 		servo_voltage_watcher();
 
-		//Spoolup Watcher.  Disarm if 4 seconds passes without advancing
+	/*	//Spoolup Watcher.  Disarm if 4 seconds passes without advancing
 		if(AP_HAL::millis16() - spoolup_watcher > (uint16_t)4000){
 			 copter.arming.disarm();
 			 gcs().send_text(MAV_SEVERITY_CRITICAL,"A Rotor Failed to Start: Disarm");
 		}
-
+		*/
+		motors->enable_aft_rotor(true);
+		motors->spoolup_complete(true);
 		_fwd_rpm = rpm_sensor.get_rpm(0);
 		_aft_rpm = rpm_sensor.get_rpm(1);
 
@@ -406,13 +408,14 @@ void Copter::topple_sense(){
 
 void Copter::servo_voltage_watcher(){
 
-		 const float servo_voltage = hal.analogin->servorail_voltage();
+		// const float servo_voltage = hal.analogin->servorail_voltage();
 
-		 if(servo_voltage < 4.0 ){
+		/* if(servo_voltage < 4.0 ){
 			 copter.arming.disarm();
 			 AP_Notify::flags.low_servo_voltage = true;
 			 gcs().send_text(MAV_SEVERITY_CRITICAL,"LOW SERVO VOLTAGE");
 			}
+			*/
 }
 
 
@@ -841,6 +844,22 @@ void Copter::auto_config(){
 
 	hover_rpm_filter.reset(g.rpm_hover);
 	motors->set_hover_RPM(g.rpm_hover);
+
+}
+
+
+
+void Copter::arm_copter_for_stand(){
+
+
+	copter.arming.arm(AP_Arming::Method::MAVLINK);
+
+}
+
+void Copter::disarm_copter_for_stand(){
+
+
+	copter.arming.disarm();
 
 }
 

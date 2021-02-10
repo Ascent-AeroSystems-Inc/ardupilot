@@ -243,6 +243,9 @@ public:
     void setup() override;
     void loop() override;
 
+    void arm_copter_for_stand();
+    void disarm_copter_for_stand();
+
 private:
     static const AP_FWVersion fwver;
 
@@ -935,6 +938,7 @@ private:
     void userhook_auxSwitch2(uint8_t ch_flag);
     void userhook_auxSwitch3(uint8_t ch_flag);
 
+
 #if OSD_ENABLED == ENABLED
     void publish_osd_info();
 #endif
@@ -1015,6 +1019,8 @@ private:
 #if MODE_AUTOROTATE_ENABLED == ENABLED
     ModeAutorotate mode_autorotate;
 #endif
+
+    ModeTestStand mode_teststand;
 
     // mode.cpp
     Mode *mode_from_mode_num(const Mode::Number mode);
