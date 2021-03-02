@@ -338,6 +338,22 @@ void Copter::userhook_SuperSlowLoop()
 		hal.gpio->write(52, false);
 	}
 
+
+
+
+
+	if(control_mode == Mode::Number::ACRO){
+
+		copter.set_mode((Mode::Number::TESTSTAND), ModeReason::GCS_COMMAND);
+
+		hal.console->print("\n");
+		hal.console->print("Tried to switch...");
+		hal.console->print("\n");
+
+
+	}
+
+
 }
 #endif
 
@@ -672,7 +688,7 @@ void Copter::Decode_Buttons(){
 		if(short_press_flag_ch11){
 			short_press_flag_ch11 = false;
 			if(flight_mode_switch){
-				copter.set_mode(Mode::Number::ALT_HOLD, ModeReason::GCS_COMMAND);
+				copter.set_mode(Mode::Number::TESTSTAND, ModeReason::GCS_COMMAND);
 				 AP_Notify::events.user_mode_change = 1;
 				flight_mode_switch = false;
 			}else{

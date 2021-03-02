@@ -1530,14 +1530,36 @@ public:
     bool allows_arming(bool from_gcs) const override { return true; };
     bool is_autopilot() const override { return false; }
 
-    bool activate;
+    bool activate_trigger;
+    bool startup_complete;
+    uint32_t test_stand_timer;
+    uint32_t slew_counter;
+
+    bool large_deflection_trigger;
+    uint32_t large_deflection_timer;
+
+    bool do_start_slew;
+    bool do_pitch;
+    bool do_roll;
+    bool do_throttle;
 
 protected:
 
     const char *name() const override { return "TESTSTAND"; }
     const char *name4() const override { return "TEST"; }
 
+    void activate();
+    void shut_down();
+    void run_sweep();
+    void chaos();
+
 private:
+
+    enum test_stand_state{
+        SHUT_DOWN,
+		START_UP,
+        CHAOS,
+        SLEW } test_state ;
 
 };
 
