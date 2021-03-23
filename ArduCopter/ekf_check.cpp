@@ -125,6 +125,9 @@ bool Copter::ekf_over_threshold()
 
     // either optflow relative or absolute position estimate OK
     if (optflow_position_ok() || ekf_position_ok()) {
+
+    	 gcs().send_text(MAV_SEVERITY_CRITICAL,"!EKF_POS_OK");
+
         return false;
     }
     return true;
