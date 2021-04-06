@@ -25,6 +25,17 @@ void AP_Mount_Backend::set_roi_target(const struct Location &target_loc)
     _frontend.set_mode(_instance, MAV_MOUNT_MODE_GPS_POINT);
 }
 
+
+
+// set_roi_target - sets target location that mount should attempt to point towards
+void AP_Mount_Backend::get_roi_target(Location& target_loc)
+{
+    // set the target gps location
+    target_loc =  _state._roi_target;
+
+}
+
+
 // process MOUNT_CONFIGURE messages received from GCS.  deprecated.
 void AP_Mount_Backend::handle_mount_configure(const mavlink_mount_configure_t &packet)
 {
@@ -142,6 +153,8 @@ void AP_Mount_Backend::calc_angle_to_location(const struct Location &target, Vec
     float target_distance = 100.0f*norm(GPS_vector_x, GPS_vector_y);      // Careful , centimeters here locally. Baro/alt is in cm, lat/lon is in meters.
 
     float GPS_vector_z = (_frontend._current_loc.alt); // Always assumes target is at the altitude of takeoff.  Should add consideration for 'target.alt'
+
+  //  float GPS_vector_z = 1500;
 
     // initialise all angles to zero
     angles_to_target_deg.zero();

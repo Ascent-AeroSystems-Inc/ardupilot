@@ -120,14 +120,19 @@ void AP_MotorsCoax::output_to_motors()
 
             // always start fwd rotor
             set_actuator_with_slew(_actuator[3], actuator_spin_up_to_ground_idle());
-			rc_write(AP_MOTORS_MOT_4, output_to_pwm(_actuator[3]));
 
+		//	rc_write(AP_MOTORS_MOT_4, output_to_pwm(_actuator[3]));
+            rc_write(AP_MOTORS_MOT_3, output_to_pwm(0));
+            rc_write(AP_MOTORS_MOT_4, output_to_pwm(0));
 
 			//handle aft rotor spoolup
 		if(_spoolup_complete){
 
             set_actuator_with_slew(_actuator[2], _spin_arm);
-			rc_write(AP_MOTORS_MOT_3,  output_to_pwm(_actuator[2]));
+			//rc_write(AP_MOTORS_MOT_3,  output_to_pwm(_actuator[2]));
+
+            rc_write(AP_MOTORS_MOT_3, output_to_pwm(0));
+            rc_write(AP_MOTORS_MOT_4, output_to_pwm(0));
 
     	}else if(_enable_aft_rotor){
 
@@ -141,7 +146,10 @@ void AP_MotorsCoax::output_to_motors()
 
         	_actuator[2] = _aft_rotor_start;
 
-			rc_write(AP_MOTORS_MOT_3,  (int16_t)((float)get_pwm_output_min() + _aft_rotor_start * (float)(get_pwm_output_max()-get_pwm_output_min())) );
+			//rc_write(AP_MOTORS_MOT_3,  (int16_t)((float)get_pwm_output_min() + _aft_rotor_start * (float)(get_pwm_output_max()-get_pwm_output_min())) );
+
+            rc_write(AP_MOTORS_MOT_3, output_to_pwm(0));
+            rc_write(AP_MOTORS_MOT_4, output_to_pwm(0));
 
 		}else{
 
@@ -174,8 +182,11 @@ void AP_MotorsCoax::output_to_motors()
 			set_actuator_with_slew(_actuator[2], thrust_to_actuator(_thrust_yt_cw));
 			set_actuator_with_slew(_actuator[3], thrust_to_actuator(_thrust_yt_ccw));
 
-			rc_write(AP_MOTORS_MOT_3, output_to_pwm(_actuator[2]));
-			rc_write(AP_MOTORS_MOT_4, output_to_pwm(_actuator[3]));
+		//	rc_write(AP_MOTORS_MOT_3, output_to_pwm(_actuator[2]));
+		//	rc_write(AP_MOTORS_MOT_4, output_to_pwm(_actuator[3]));
+
+            rc_write(AP_MOTORS_MOT_3, output_to_pwm(0));
+            rc_write(AP_MOTORS_MOT_4, output_to_pwm(0));
 
 			break;
 
@@ -191,13 +202,20 @@ void AP_MotorsCoax::output_to_motors()
 
 			_actuator[2] = _aft_rotor_start;
 
-			rc_write(AP_MOTORS_MOT_3,  (int16_t)((float)get_pwm_output_min() + _aft_rotor_start * (float)(get_pwm_output_max()-get_pwm_output_min())) );
+			//rc_write(AP_MOTORS_MOT_3,  (int16_t)((float)get_pwm_output_min() + _aft_rotor_start * (float)(get_pwm_output_max()-get_pwm_output_min())) );
+
+            rc_write(AP_MOTORS_MOT_3, output_to_pwm(0));
+            rc_write(AP_MOTORS_MOT_4, output_to_pwm(0));
 
 		}else{
 
 			_actuator[2] = 0;
 
-			rc_write(AP_MOTORS_MOT_3, output_to_pwm(0));
+			//rc_write(AP_MOTORS_MOT_3, output_to_pwm(0));
+
+            rc_write(AP_MOTORS_MOT_3, output_to_pwm(0));
+            rc_write(AP_MOTORS_MOT_4, output_to_pwm(0));
+
 			 _aft_rotor_start = 0;
 			 _spoolup_complete = false;
 			 _enable_aft_rotor = false;

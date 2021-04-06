@@ -148,6 +148,11 @@ public:
     void set_roi_target(const struct Location &target_loc) { set_roi_target(_primary,target_loc); }
     void set_roi_target(uint8_t instance, const struct Location &target_loc);
 
+
+    // set_roi_target - sets target location that mount should attempt to point towards
+    void get_roi_target(Location &target_loc) { get_roi_target(_primary,target_loc); }
+    void get_roi_target(uint8_t instance, Location &target_loc);
+
     // mavlink message handling:
     MAV_RESULT handle_command_long(const mavlink_command_long_t &packet);
     void handle_param_value(const mavlink_message_t &msg);

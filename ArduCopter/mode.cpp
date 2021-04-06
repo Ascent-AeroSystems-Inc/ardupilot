@@ -65,6 +65,16 @@ Mode *Copter::mode_from_mode_num(const Mode::Number mode)
             break;
 #endif
 
+
+
+
+
+        case Mode::Number::ATTACK:
+            ret = &mode_attack;
+            break;
+
+
+
 #if MODE_GUIDED_ENABLED == ENABLED
         case Mode::Number::GUIDED:
             ret = &mode_guided;

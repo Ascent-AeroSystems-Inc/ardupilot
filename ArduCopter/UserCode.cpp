@@ -57,6 +57,8 @@ void Copter::userhook_init()
 
 	camera_mount.set_mode_to_default();
 
+	location_target_updated = false;
+
 
 	//Set starting RPM if the number of vehicle batteries is set
 	float _RPM_hover;
@@ -171,8 +173,14 @@ void Copter::userhook_50Hz()
 
 	case spoolup:
 
+		motors->enable_aft_rotor(true);
+		motors->spoolup_complete(true);
+
+
 		//Looks for issues with startup
 		servo_voltage_watcher();
+
+		/*
 
 		if((g.rotor_timeout*1000) >= 1){  // if timeout is set too low, just ignore
 
@@ -183,6 +191,8 @@ void Copter::userhook_50Hz()
 			}
 
 		}
+
+		*/
 
 		_fwd_rpm = rpm_sensor.get_rpm(0);
 		_aft_rpm = rpm_sensor.get_rpm(1);
@@ -581,7 +591,10 @@ void Copter::Decode_Buttons(){
 
 
 	if(short_press_flag_ch9){
-		camera_mount.center_yaw();
+	//	camera_mount.center_yaw();
+
+		copter.set_mode(Mode::Number::ATTACK, ModeReason::GCS_COMMAND);
+
 		short_press_flag_ch9 = false;
 	}
 
@@ -601,6 +614,7 @@ void Copter::Decode_Buttons(){
 	if(long_press_flag_ch10){
 		camera_mount.set_camera_point_ROI(ahrs.get_yaw());
 		gcs().send_text(MAV_SEVERITY_INFO,"ROI Selected");
+		location_target_updated = true;
 		long_press_flag_ch10 = false;
 	}
 

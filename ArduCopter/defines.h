@@ -171,6 +171,7 @@ enum LoggingParameters {
      LOG_HELI_MSG,
      LOG_PRECLAND_MSG,
      LOG_GUIDEDTARGET_MSG,
+	 LOG_ATTACK_MSG,
      LOG_SYSIDD_MSG,
      LOG_SYSIDS_MSG,
 };

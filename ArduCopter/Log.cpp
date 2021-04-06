@@ -485,6 +485,41 @@ void Copter::Log_Write_GuidedTarget(uint8_t target_type, const Vector3f& pos_tar
     logger.WriteBlock(&pkt, sizeof(pkt));
 }
 
+
+// guided target logging
+struct PACKED log_Attack {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    uint8_t type;
+    float pos_target_x;
+    float pos_target_y;
+    float pos_target_z;
+    float vel_target_x;
+    float vel_target_y;
+    float vel_target_z;
+};
+
+
+
+void Copter::Log_Write_Attack(uint8_t target_type, const Vector3f& pos_target, const Vector3f& vel_target)
+{
+    struct log_Attack pkt = {
+        LOG_PACKET_HEADER_INIT(LOG_ATTACK_MSG),
+        time_us         : AP_HAL::micros64(),
+        type            : target_type,
+        pos_target_x    : pos_target.x,
+        pos_target_y    : pos_target.y,
+        pos_target_z    : pos_target.z,
+        vel_target_x    : vel_target.x,
+        vel_target_y    : vel_target.y,
+        vel_target_z    : vel_target.z
+    };
+    logger.WriteBlock(&pkt, sizeof(pkt));
+}
+
+
+
+
 // type and unit information can be found in
 // libraries/AP_Logger/Logstructure.h; search for "log_Units" for
 // units and "Format characters" for field type information
@@ -533,6 +568,9 @@ const struct LogStructure Copter::log_structure[] = {
       "SIDS", "QBfffffff",  "TimeUS,Ax,Mag,FSt,FSp,TFin,TC,TR,TFout", "s--ssssss", "F--------" },
     { LOG_GUIDEDTARGET_MSG, sizeof(log_GuidedTarget),
       "GUID",  "QBffffff",    "TimeUS,Type,pX,pY,pZ,vX,vY,vZ", "s-mmmnnn", "F-000000" },
+
+	{ LOG_ATTACK_MSG, sizeof(log_Attack),
+	  "ATCK",  "QBffffff",    "TimeUS,Type,pX,pY,pZ,vX,vY,vZ", "s-mmmnnn", "F-000000" },
 };
 
 void Copter::Log_Write_Vehicle_Startup_Messages()

@@ -58,6 +58,8 @@ public:
 
     virtual void set_roi_target(const struct Location &target_loc);
 
+    virtual void get_roi_target(Location &target_loc);
+
     // control - control the mount
     virtual void control(int32_t pitch_or_lat, int32_t roll_or_lon, int32_t yaw_or_alt, MAV_MOUNT_MODE mount_mode);
     
