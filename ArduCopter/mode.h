@@ -1,4 +1,4 @@
-#pragma once
+	#pragma once
 
 #include "Copter.h"
 class Parameters;
@@ -36,7 +36,8 @@ public:
         ZIGZAG    =    24,  // ZIGZAG mode is able to fly in a zigzag manner with predefined point A and point B
         SYSTEMID  =    25,  // System ID mode produces automated system identification signals in the controllers
         AUTOROTATE =   26,  // Autonomous autorotation
-		ATTACK	 =	   27,
+		ATTACK	   =   27,
+
     };
 
     // constructor
@@ -619,6 +620,7 @@ private:
     bool pilot_yaw_override = false; // true if pilot is overriding yaw
     bool speed_changing = false;     // true when the roll stick is being held to facilitate stopping at 0 rate
 };
+
 
 
 class ModeDrift : public Mode {

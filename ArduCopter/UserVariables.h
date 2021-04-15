@@ -79,7 +79,7 @@ enum vehicle_state{
 
 }spirit_state;
 
-
+bool map_take;
 
 
 #if WII_CAMERA == 1

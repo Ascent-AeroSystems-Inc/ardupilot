@@ -616,6 +616,23 @@ void AP_Mount::set_camera_point_ROI(uint8_t instance, float yaw)
 
 
 
+
+/*
+// set_angle_targets - sets angle targets in degrees
+void AP_Mount::get_camera_point_ROI(uint8_t instance, struct Location &target_loc)
+{
+  //  if (instance >= AP_MOUNT_MAX_INSTANCES || _backends[instance] == nullptr) {
+    //    return;
+   // }
+
+    // send command to backend
+    _backends[instance]->get_camera_point_ROI(const struct Location &target_loc);
+}
+
+*/
+
+
+
 void AP_Mount::center_yaw(uint8_t instance)
 {
     if (instance >= AP_MOUNT_MAX_INSTANCES || _backends[instance] == nullptr) {
@@ -765,9 +782,19 @@ void AP_Mount::set_roi_target(uint8_t instance, const struct Location &target_lo
 }
 
 
-
-
 // set_roi_target - sets target location that mount should attempt to point towards
+void AP_Mount::set_roi_target_wo_switch(uint8_t instance, const struct Location &target_loc)
+{
+    // call instance's set_roi_cmd
+    if (instance < AP_MOUNT_MAX_INSTANCES && _backends[instance] != nullptr) {
+        _backends[instance]->set_roi_target_wo_switch(target_loc);
+    }
+}
+
+
+
+
+
 void AP_Mount::get_roi_target(uint8_t instance, Location &target_loc)
 {
     // call instance's set_roi_cmd

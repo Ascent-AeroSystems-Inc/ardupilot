@@ -58,6 +58,8 @@ public:
 
     virtual void set_roi_target(const struct Location &target_loc);
 
+    virtual void set_roi_target_wo_switch(const struct Location &target_loc);
+
     virtual void get_roi_target(Location &target_loc);
 
     // control - control the mount
@@ -92,6 +94,7 @@ public:
 	virtual void center_yaw();
 	virtual void look_down();
 	virtual void flip_image();
+
 
     bool _enable_follow;
 

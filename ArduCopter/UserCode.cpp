@@ -88,6 +88,34 @@ void Copter::userhook_init()
     	auto_config();
     }
 
+   Location target;
+
+   target.lat = g.lat_target;
+   target.lng = g.long_target;
+   target.alt = 0;
+
+
+
+   mode_auto.mission.clear();
+  // mode_auto.mission.update();
+
+ //  hal.scheduler->delay(5000);
+
+   AP_Mission::Mission_Command cmd  = {};
+   cmd.id = MAV_CMD_NAV_WAYPOINT;
+   cmd.p1 = 0;
+   cmd.content.location = target;
+   mode_auto.mission.add_cmd(cmd);
+
+
+  cmd.id = MAV_CMD_DO_SET_ROI;
+  cmd.p1 = 0;
+  cmd.content.location = target;
+  mode_auto.mission.add_cmd(cmd);
+
+
+
+  camera_mount.set_roi_target_wo_switch(target);
 
 }
 #endif
@@ -173,14 +201,10 @@ void Copter::userhook_50Hz()
 
 	case spoolup:
 
-		motors->enable_aft_rotor(true);
-		motors->spoolup_complete(true);
-
 
 		//Looks for issues with startup
 		servo_voltage_watcher();
 
-		/*
 
 		if((g.rotor_timeout*1000) >= 1){  // if timeout is set too low, just ignore
 
@@ -192,7 +216,6 @@ void Copter::userhook_50Hz()
 
 		}
 
-		*/
 
 		_fwd_rpm = rpm_sensor.get_rpm(0);
 		_aft_rpm = rpm_sensor.get_rpm(1);
@@ -318,7 +341,6 @@ void Copter::userhook_SlowLoop()
 void Copter::userhook_SuperSlowLoop()
 {
     // put your 1Hz code here
-
 
 	//Look for a change in vehicle configuration
 	if((g.battery_number != num_battery) or fabsf(g.payload_weight - payload_weight) > 0.1f){

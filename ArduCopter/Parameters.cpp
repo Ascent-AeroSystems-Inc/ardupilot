@@ -529,6 +529,25 @@ const AP_Param::Info Copter::var_info[] = {
 	  GSCALAR(rotor_timeout,  "SPIRIT_ROTOR_TO",    4),
 
 
+	// @Param: MOT_SPOOLUP_DELTA
+	// @DisplayName:
+	// @Description:
+	// @Values:
+	// @Range:
+	// @User:
+	  GSCALAR(lat_target,  "SPIRIT_LAT_TRGT",    0),
+
+
+
+	// @Param: MOT_SPOOLUP_DELTA
+	// @DisplayName:
+	// @Description:
+	// @Values:
+	// @Range:
+	// @User:
+	  GSCALAR(long_target,  "SPIRIT_LONG_TRGT",    0),
+
+
 
 
     // variables not in the g class which contain EEPROM saved variables

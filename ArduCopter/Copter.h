@@ -946,6 +946,8 @@ private:
     ModeAcro_Heli mode_acro;
 #else
     ModeAcro mode_acro;
+
+    ModeAttack mode_attack;
 #endif
 #endif
     ModeAltHold mode_althold;
@@ -978,8 +980,6 @@ private:
 #if MODE_LOITER_ENABLED == ENABLED
     ModeLoiter mode_loiter;
 #endif
-
-    ModeAttack mode_attack;
 
 #if MODE_POSHOLD_ENABLED == ENABLED
     ModePosHold mode_poshold;

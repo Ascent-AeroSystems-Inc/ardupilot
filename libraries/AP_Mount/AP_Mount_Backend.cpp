@@ -28,12 +28,24 @@ void AP_Mount_Backend::set_roi_target(const struct Location &target_loc)
 
 
 // set_roi_target - sets target location that mount should attempt to point towards
+void AP_Mount_Backend::set_roi_target_wo_switch(const struct Location &target_loc)
+{
+    // set the target gps location
+    _state._roi_target = target_loc;
+
+}
+
+
+
+// set_roi_target - sets target location that mount should attempt to point towards
+
 void AP_Mount_Backend::get_roi_target(Location& target_loc)
 {
     // set the target gps location
     target_loc =  _state._roi_target;
 
 }
+
 
 
 // process MOUNT_CONFIGURE messages received from GCS.  deprecated.

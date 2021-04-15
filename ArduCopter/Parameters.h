@@ -380,6 +380,8 @@ public:
 		k_param_payload_weight,
 		k_param_en_topple_sense,
 		k_param_rotor_timeout,
+		k_param_lat_target,
+		k_param_long_target,
 
 
 
@@ -486,6 +488,9 @@ public:
     AP_Float				payload_weight;
     AP_Int8					en_topple_sense;
     AP_Float				rotor_timeout;
+
+    AP_Int32				lat_target;
+    AP_Int32				long_target;
 
 
     // Note: keep initializers here in the same order as they are declared

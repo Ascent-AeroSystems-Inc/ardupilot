@@ -15,9 +15,10 @@ bool ModeAttack::init(bool ignore_checks)
 	    copter.camera_mount.get_roi_target(target_location);
 	    float current_alt =  inertial_nav.get_altitude();
 
-	   // current_alt = 2200;
+	    current_alt = 1000;
 
 	    target_location.set_alt_cm((int32_t)current_alt, Location::AltFrame::ABOVE_ORIGIN);
+
 	    wp_nav->set_wp_destination(target_location);
 
 	    copter.camera_mount.enable_RC_control(true);
