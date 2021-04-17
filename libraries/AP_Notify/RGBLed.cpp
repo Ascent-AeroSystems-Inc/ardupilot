@@ -152,6 +152,8 @@ uint32_t RGBLed::get_colour_sequence_obc(void) const
 uint32_t RGBLed::get_colour_sequence(void)// const
 {
 
+
+
 	if(AP_Notify::flags.arming_failed){
 		hold_arming_fail = true;
 		hold_flight_mode_fail = false;
@@ -304,11 +306,11 @@ uint32_t RGBLed::get_colour_sequence(void)// const
     }
     */
 
-    if (AP_Notify::flags.gps_status >= AP_GPS::GPS_OK_FIX_3D_DGPS && AP_Notify::flags.pre_arm_gps_check) {
+    if (AP_Notify::flags.gps_status >= AP_GPS::GPS_OK_FIX_3D_DGPS && AP_Notify::flags.pre_arm_gps_check && AP_Notify::flags.ekf_nav_good) {
         return sequence_disarmed_good_dgps;
     }
 
-    if (AP_Notify::flags.gps_status >= AP_GPS::GPS_OK_FIX_3D && AP_Notify::flags.pre_arm_gps_check) {
+    if (AP_Notify::flags.gps_status >= AP_GPS::GPS_OK_FIX_3D && AP_Notify::flags.pre_arm_gps_check && AP_Notify::flags.ekf_nav_good) {
         return sequence_disarmed_good_gps;
     }
 

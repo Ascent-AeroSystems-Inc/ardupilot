@@ -896,6 +896,36 @@ void AC_PosControl::write_log()
                        double(accel_y * 0.01f));
 }
 
+
+
+
+// write log to dataflash
+void AC_PosControl::write_log_II()
+{
+
+
+	const Vector2f &vel_xy_p = _pid_vel_xy.get_p();
+	const Vector2f &vel_xy_i = _pid_vel_xy.get_i();
+	const Vector2f &vel_xy_d = _pid_vel_xy.get_d();
+
+    AP::logger().Write("VEL",
+                       "TimeUS,XP,XI,XD,YP,YI,YD",
+                       "s------",
+                       "F000000",
+                       "Qffffff",
+                       AP_HAL::micros64(),
+                       float(vel_xy_p.x),
+					   float(vel_xy_i.x),
+					   float(vel_xy_d.x),
+					   float(vel_xy_p.y),
+					   float(vel_xy_i.y),
+					   float(vel_xy_d.y));
+}
+
+
+
+
+
 /// init_vel_controller_xyz - initialise the velocity controller - should be called once before the caller attempts to use the controller
 void AC_PosControl::init_vel_controller_xyz()
 {

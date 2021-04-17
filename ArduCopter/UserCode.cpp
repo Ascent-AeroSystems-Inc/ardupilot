@@ -9,6 +9,8 @@ void Copter::userhook_init()
 
 	//Servo Voltage Watcher
 	AP_Notify::flags.low_servo_voltage = false;
+	AP_Notify::flags.ekf_nav_good = false;
+
 
 	//Killswitch Variables
 	killswitch_counter = 0;
@@ -293,7 +295,16 @@ void Copter::userhook_SlowLoop()
 {
     // put your 3.3Hz code here
 
+if(!motors->armed()){
 
+	nav_filter_status filter_status = inertial_nav.get_filter_status();
+
+	if(filter_status.flags.const_pos_mode){
+		AP_Notify::flags.ekf_nav_good = false;
+	}else{
+		AP_Notify::flags.ekf_nav_good = true;
+	}
+}
 
 	if(g.herelink_enable){
 		Decode_Buttons();

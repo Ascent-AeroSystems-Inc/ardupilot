@@ -301,6 +301,7 @@ public:
     float time_since_last_xy_update() const;
 
     void write_log();
+    void write_log_II();
 
     // provide feedback on whether arming would be a good idea right now:
     bool pre_arm_checks(const char *param_prefix,

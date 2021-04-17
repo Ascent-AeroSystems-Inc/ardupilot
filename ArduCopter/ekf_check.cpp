@@ -99,6 +99,8 @@ bool Copter::ekf_over_threshold()
         return false;
     }
 
+    gcs().send_text(MAV_SEVERITY_CRITICAL,"!In Thre Check");
+
     // use EKF to get variance
     float position_variance, vel_variance, height_variance, tas_variance;
     Vector3f mag_variance;
@@ -126,10 +128,11 @@ bool Copter::ekf_over_threshold()
     // either optflow relative or absolute position estimate OK
     if (optflow_position_ok() || ekf_position_ok()) {
 
-    	 gcs().send_text(MAV_SEVERITY_CRITICAL,"!EKF_POS_OK");
-
         return false;
     }
+
+	 gcs().send_text(MAV_SEVERITY_CRITICAL,"!EKF_POS_OK");
+
     return true;
 }
 

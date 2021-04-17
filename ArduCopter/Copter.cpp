@@ -366,6 +366,7 @@ void Copter::ten_hz_logging_loop()
     }
     if (should_log(MASK_LOG_NTUN) && (flightmode->requires_GPS() || landing_with_GPS())) {
         pos_control->write_log();
+        pos_control->write_log_II();
     }
     if (should_log(MASK_LOG_IMU) || should_log(MASK_LOG_IMU_FAST) || should_log(MASK_LOG_IMU_RAW)) {
         logger.Write_Vibration();

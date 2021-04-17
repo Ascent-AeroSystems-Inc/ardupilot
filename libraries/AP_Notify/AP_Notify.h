@@ -108,6 +108,7 @@ public:
         bool low_servo_voltage;
         bool no_RC_in;
         bool critical_battery_voltage;
+        bool ekf_nav_good;
 
     };
 
