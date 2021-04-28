@@ -7,9 +7,15 @@ extern const AP_HAL::HAL& hal;
 void AP_Mount_Backend::set_angle_targets(float roll, float tilt, float pan)
 {
     // set angle targets
+	/*
     _angle_ef_target_rad.x = radians(roll);
     _angle_ef_target_rad.y = radians(tilt);
     _angle_ef_target_rad.z = radians(pan);
+    */
+
+    _angle_ef_target_deg.x = (roll);
+    _angle_ef_target_deg.y = (tilt);
+    _angle_ef_target_deg.z = (pan);
 
     // set the mode to mavlink targeting
     _frontend.set_mode(_instance, MAV_MOUNT_MODE_MAVLINK_TARGETING);
@@ -174,16 +180,42 @@ void AP_Mount_Backend::calc_angle_to_location(const struct Location &target, Vec
 
         angles_to_target_deg.z = ToDeg(angles_to_target_deg.z);
     }
+
+
+
+
+    //The above assumes zero vehicle pitch
+    //Need to subtract out vehicle pitch
+
+
 }
 
 
 // set_angle_targets - sets angle targets in degrees
-void AP_Mount_Backend::enable_RC_control(bool en)  { _RC_control_enable = en; }
+void AP_Mount_Backend::enable_RC_control(bool en)  {
+
+	if(en){
+
+		_RC_control_enable = true;
+		_enable_follow = false;
+		enable_follow(false);
+
+	}else{
+
+		_RC_control_enable = false;
+		_enable_follow = true;
+		enable_follow(true);
+	}
+
+}
 
 
 // set_angle_targets - sets angle targets in degrees
 void AP_Mount_Backend::enable_follow(bool en)
 {
+
+	command_flags.enable_follow = true;
+
 	 if(en){
 		 _enable_follow = true;
 	 }else{
@@ -221,15 +253,17 @@ void AP_Mount_Backend::set_camera_point_ROI(float yaw)
 		pan_angle = 360 + _camera_pan_angle;
 	}
 
-	/* Debugging
-	hal.console->print("\n");
+	/*
+	// Debugging
+//	hal.console->print("\n");
 	hal.console->print("\n");
 	hal.console->printf("Camera Tilt: %4f", _camera_tilt_angle);
 	hal.console->print("\n");
-	hal.console->printf("Distance:  %4f", distance);
-	hal.console->print("\n");
-	hal.console->print("\n");
-	 */
+	//hal.console->printf("Distance:  %4f", distance);
+	//hal.console->print("\n");
+	//hal.console->print("\n");
+
+*/
 
 	float bearing = degrees(yaw) + pan_angle;   //// <- pass yaw to this funciton from usercode
 	roi_gps_target.offset_bearing(bearing, distance);
@@ -252,6 +286,24 @@ void AP_Mount_Backend::flip_image(){ command_flags.flip_image_IR = true; }
 
 
 void AP_Mount_Backend::turn_camera_off(){command_flags.turn_camera_off = true; }
+
+
+void AP_Mount_Backend::start_stop_track(bool start){
+
+
+	hal.console->print("\n");
+	hal.console->print("in start_stop");
+	hal.console->print("\n");
+
+	if(start){
+		command_flags.start_track = true;
+	}else{
+		command_flags.stop_track = true;
+	}
+
+
+
+}
 
 
 

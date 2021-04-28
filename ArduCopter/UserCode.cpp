@@ -89,6 +89,10 @@ void Copter::userhook_init()
     }
 
 
+   tracking_start = false;
+   en_following = false;
+
+
 }
 #endif
 
@@ -593,12 +597,41 @@ void Copter::Decode_Buttons(){
 
 	if(short_press_flag_ch9){
 		camera_mount.center_yaw();
+
+		/*
+		if(!en_following){
+
+			camera_mount.enable_follow(false);
+			en_following = true;
+
+		}else{
+
+			camera_mount.enable_follow(true);
+			en_following = false;
+		}
+		 */
+
 		short_press_flag_ch9 = false;
 	}
 
 	if(long_press_flag_ch9){
 		//camera_mount.flip_image();
-		camera_mount.look_down();
+		//camera_mount.look_down();
+
+
+		if(!tracking_start){
+
+			camera_mount.start_stop_track(true);
+			tracking_start = true;
+
+		}else{
+
+			camera_mount.start_stop_track(false);
+			tracking_start = false;
+
+		}
+
+
 		long_press_flag_ch9 = false;
 	}
 
@@ -606,12 +639,14 @@ void Copter::Decode_Buttons(){
 
 	if(short_press_flag_ch10){
 		camera_mount.set_mode(MAV_MOUNT_MODE_GPS_POINT);
+		camera_mount.start_stop_track(false);
 		short_press_flag_ch10 = false;
 	}
 
 	if(long_press_flag_ch10){
 		camera_mount.set_camera_point_ROI(ahrs.get_yaw());
 		gcs().send_text(MAV_SEVERITY_INFO,"ROI Selected");
+		camera_mount.start_stop_track(false);
 		long_press_flag_ch10 = false;
 	}
 

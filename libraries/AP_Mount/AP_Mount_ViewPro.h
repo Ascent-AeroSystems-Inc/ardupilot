@@ -78,6 +78,9 @@ private:
     void cmd_flip_image_EO();
     void cmd_flip_image_IR();
 
+    void tracking_control(bool start);
+
+
 
     //void camera_state_trackingCam(int camera_state_cmd);
 

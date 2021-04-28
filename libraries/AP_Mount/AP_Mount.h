@@ -144,6 +144,10 @@ public:
     void enable_follow(bool en) { enable_follow(_primary, en); }
 
 
+    void start_stop_track(uint8_t instance, bool start);
+    void start_stop_track(bool start) { start_stop_track(_primary, start); }
+
+
     // set_roi_target - sets target location that mount should attempt to point towards
     void set_roi_target(const struct Location &target_loc) { set_roi_target(_primary,target_loc); }
     void set_roi_target(uint8_t instance, const struct Location &target_loc);

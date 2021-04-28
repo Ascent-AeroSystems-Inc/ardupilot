@@ -66,6 +66,9 @@ uint8_t function_counter;
 uint8_t cam_button_debounce_timer;
 bool flight_mode_switch;
 
+bool tracking_start;
+bool en_following;
+
 
 enum vehicle_state{
 	disarm,

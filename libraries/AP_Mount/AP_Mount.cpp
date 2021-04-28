@@ -627,6 +627,7 @@ void AP_Mount::center_yaw(uint8_t instance)
 }
 
 
+
 void AP_Mount::look_down(uint8_t instance)
 {
     if (instance >= AP_MOUNT_MAX_INSTANCES || _backends[instance] == nullptr) {
@@ -659,6 +660,22 @@ void AP_Mount::enable_follow(uint8_t instance, bool en)
 
     // send command to backend
     _backends[instance]->enable_follow(en);
+}
+
+
+
+
+// set_angle_targets - sets angle targets in degrees
+void AP_Mount::start_stop_track(uint8_t instance, bool start)
+{
+
+    if (instance >= AP_MOUNT_MAX_INSTANCES || _backends[instance] == nullptr) {
+        return;
+    }
+
+
+    // send command to backend
+    _backends[instance]->start_stop_track(start);
 }
 
 

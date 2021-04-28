@@ -90,6 +90,7 @@ public:
 	virtual void center_yaw();
 	virtual void look_down();
 	virtual void flip_image();
+	virtual void start_stop_track(bool start);
 
     bool _enable_follow;
 
@@ -152,6 +153,9 @@ protected:
 		bool default_pip_color;
 		bool flip_image_IR;
 		bool flip_image_EO;
+		bool start_track;
+		bool stop_track;
+		bool enable_follow;
     	}  command_flags;
 
 private:

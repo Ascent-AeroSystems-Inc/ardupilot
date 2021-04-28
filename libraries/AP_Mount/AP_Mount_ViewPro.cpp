@@ -46,9 +46,17 @@ void AP_Mount_ViewPro::init()
 	command_flags.stop_video = false;
 	command_flags.flip_image_IR = false;
 	command_flags.flip_image_EO = false;
+
+	command_flags.start_track = false;
+	command_flags.stop_track = false;
+	command_flags.enable_follow = false;
+
+
 	yaw_center_reset_flag = false;
 	query_state_flag = false;
 	image_flip_toggle =false;
+
+	_enable_follow = false;
 
 }
 
@@ -61,6 +69,13 @@ void AP_Mount_ViewPro::update()
     }
 
     read_incoming(); // read the incoming messages from the gimbal
+
+/*
+	hal.console->print("\n");
+	hal.console->printf("Camera pan: %4f", _camera_pan_angle);
+	hal.console->print("\n");
+	*/
+
 
 //Center yaw if switched to manual flight (!_RC_control_enable) and you are not currently tracking a GPS point
     if((get_mode() == MAV_MOUNT_MODE_RC_TARGETING) and !_RC_control_enable){
@@ -140,6 +155,8 @@ void AP_Mount_ViewPro::update()
 
 		if(!is_zero(tilt_wheel_ch->norm_input_dz()) or (_RC_control_enable and (!is_zero(pan_ch->norm_input_dz()) or !is_zero(tilt_ch->norm_input_dz())))){
 			set_mode(MAV_MOUNT_MODE_RC_TARGETING);
+			_enable_follow = true;
+			command_flags.enable_follow = true;
 		}
 	}
 
@@ -308,7 +325,30 @@ void AP_Mount_ViewPro::send_targeting_cmd()
 		_last_send = AP_HAL::millis();
 		command_flags.look_down = false;
 		return;
+	}else if(command_flags.start_track){
+
+		tracking_control(true);
+		_last_send = AP_HAL::millis();
+		command_flags.start_track = false;
+		return;
+
+	}else if(command_flags.stop_track){
+
+		tracking_control(false);
+		_last_send = AP_HAL::millis();
+		command_flags.stop_track = false;
+		return;
+
+	}else if(command_flags.enable_follow){
+
+		enable_follow_yaw();
+		_last_send = AP_HAL::millis();
+		command_flags.enable_follow = false;
+		return;
+
 	}
+
+
 
 
 
@@ -473,6 +513,7 @@ void AP_Mount_ViewPro::parse_reply() {
 
         	_camera_tilt_angle = (_buffer.angle_data.pitch_ang)*0.0219726;
         	_camera_pan_angle = (_buffer.angle_data.yaw_rel_ang)*0.0219726;
+        	//_camera_pan_angle = (_buffer.angle_data.yaw_ang)*0.0219726;
 
         	/*
         	hal.console->printf("%4f", _camera_tilt_angle);
@@ -675,6 +716,18 @@ void AP_Mount_ViewPro::enable_follow_yaw(){
 	enable_follow.byte9 = 0x00;
 	enable_follow.byte10 = 0x00;
 	enable_follow.byte11 = 0x21;
+
+
+	if(_enable_follow){
+
+		enable_follow.byte7 = 0x01;
+		enable_follow.byte11 = 0x21;
+
+	}else{
+
+		enable_follow.byte7 = 0x00;
+		enable_follow.byte11 = 0x20;
+	}
 
 	uint8_t* buf;
 	buf = (uint8_t*)&enable_follow;
@@ -1363,4 +1416,66 @@ void AP_Mount_ViewPro::cmd_flip_image_EO(){
 	}
 
 }
+
+
+
+
+
+
+void AP_Mount_ViewPro::tracking_control(bool start){
+
+
+	cmd_48_byte_struct tracking_control;
+	uint8_t* send_buf = (uint8_t*)&tracking_control;
+	uint16_t checksum = 0;
+
+	for(uint8_t i = 0; i != 47; i++){
+		send_buf[i] = 0x00;
+	}
+
+
+	//Header
+	send_buf[0] = 0x7E;
+	send_buf[1] = 0x7E;
+	send_buf[2] = 0x44;
+
+
+
+	if(start){
+
+		send_buf[5] = 0x71;
+		send_buf[11] = 0x01;
+		send_buf[13] = 0x30;
+
+	}else{
+
+
+	}
+
+
+
+
+	// compute checksum
+	for (uint8_t i = 0;  i < 47 ; i++) {
+		checksum += send_buf[i];
+	}
+	send_buf[47] = (uint8_t)(checksum % 256);
+
+
+
+	if ((size_t)_port->txspace() < 47) {
+		return;
+	}
+
+	for (uint8_t i = 0;  i != 48 ; i++) {
+		_port->write(send_buf[i]);
+	}
+
+
+}
+
+
+
+
+
 
