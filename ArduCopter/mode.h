@@ -58,6 +58,9 @@ public:
     virtual bool in_guided_mode() const { return false; }
     virtual bool logs_attitude() const { return false; }
 
+    void set_waypoint_continue(bool _continue){waypoint_continue = _continue;};
+    bool waypoint_continue;
+
     // return a string for this flightmode
     virtual const char *name() const = 0;
     virtual const char *name4() const = 0;
@@ -472,6 +475,8 @@ private:
     // Loiter control
     uint16_t loiter_time_max;                // How long we should stay in Loiter Mode for mission scripting (time in seconds)
     uint32_t loiter_time;                    // How long have we been loitering - The start time in millis
+
+
 
     struct {
         bool reached_destination_xy : 1;

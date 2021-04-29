@@ -823,11 +823,14 @@ private:
 
     void Log_Write_Vehicle_State(float rpm_comp_pitch, float rpm_comp_roll, float hov_rpm);
    // void Log_Write_Land_Detect(bool home, bool motor_low, bool accel_stationary, bool speed, bool accel_TD, bool TD, bool TOP);
+
     // mode.cpp
     bool set_mode(Mode::Number mode, ModeReason reason);
     bool set_mode(const uint8_t new_mode, const ModeReason reason) override;
     void update_flight_mode();
     void notify_flight_mode();
+
+   // void set_waypoint_continue(bool _continue);
 
     // mode_land.cpp
     void set_mode_land_with_pause(ModeReason reason);

@@ -22,7 +22,8 @@ Mode::Mode(void) :
     channel_pitch(copter.channel_pitch),
     channel_throttle(copter.channel_throttle),
     channel_yaw(copter.channel_yaw),
-    G_Dt(copter.G_Dt)
+    G_Dt(copter.G_Dt),
+	waypoint_continue(false)
 { };
 
 float Mode::auto_takeoff_no_nav_alt_cm = 0;

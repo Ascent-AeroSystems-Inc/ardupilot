@@ -48,6 +48,8 @@ bool ModeAuto::init(bool ignore_checks)
 
         copter.camera_mount.enable_RC_control(true);
 
+        waypoint_continue = false;
+
 
         return true;
     } else {
@@ -1893,13 +1895,25 @@ bool ModeAuto::verify_spline_wp(const AP_Mission::Mission_Command& cmd)
     // start timer if necessary
     if (loiter_time == 0) {
         loiter_time = millis();
+        waypoint_continue = false;
     }
 
     // check if timer has run out
     if (((millis() - loiter_time) / 1000) >= loiter_time_max) {
-        gcs().send_text(MAV_SEVERITY_INFO, "Reached command #%i",cmd.index);
-        return true;
+        gcs().send_text(MAV_SEVERITY_INFO, "Reach command #%i",cmd.index);
+
+
+
+        if(waypoint_continue){
+        	gcs().send_text(MAV_SEVERITY_INFO, "Continue");
+        	waypoint_continue = false;
+        	return true;
+        }
+
+
+
     }
+
     return false;
 }
 
@@ -1926,5 +1940,6 @@ bool ModeAuto::verify_nav_delay(const AP_Mission::Mission_Command& cmd)
     }
     return false;
 }
+
 
 #endif

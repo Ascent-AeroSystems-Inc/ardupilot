@@ -596,7 +596,19 @@ void Copter::Decode_Buttons(){
 
 
 	if(short_press_flag_ch9){
-		camera_mount.center_yaw();
+
+
+		if(!tracking_start){
+
+			camera_mount.start_stop_track(true);
+			tracking_start = true;
+
+		}else{
+
+			camera_mount.start_stop_track(false);
+			tracking_start = false;
+
+		}
 
 		/*
 		if(!en_following){
@@ -617,20 +629,7 @@ void Copter::Decode_Buttons(){
 	if(long_press_flag_ch9){
 		//camera_mount.flip_image();
 		//camera_mount.look_down();
-
-
-		if(!tracking_start){
-
-			camera_mount.start_stop_track(true);
-			tracking_start = true;
-
-		}else{
-
-			camera_mount.start_stop_track(false);
-			tracking_start = false;
-
-		}
-
+		camera_mount.center_yaw();
 
 		long_press_flag_ch9 = false;
 	}
@@ -673,18 +672,31 @@ void Copter::Decode_Buttons(){
 	}
 
 	if(long_press_flag_ch11){
-		//Switch to Guided
-		if(!copter.set_mode(Mode::Number::GUIDED, ModeReason::GCS_COMMAND)){
-			//If mode change fails, use ALT-Hold
-			copter.set_mode((Mode::Number)copter.flight_modes[1].get(), ModeReason::GCS_COMMAND);
-			AP_Notify::events.user_mode_change_failed = 1;
+
+
+		if(copter.control_mode == Mode::Number::AUTO){
+
+
+			copter.flightmode->set_waypoint_continue(true);
+
 		}else{
-			//Flash LED if mode change works
-			AP_Notify::events.user_mode_change = 1;
+
+			//Switch to Auto
+			if(!copter.set_mode(Mode::Number::AUTO, ModeReason::GCS_COMMAND)){
+				//If mode change fails, use ALT-Hold
+				copter.set_mode((Mode::Number)copter.flight_modes[1].get(), ModeReason::GCS_COMMAND);
+				AP_Notify::events.user_mode_change_failed = 1;
+			}else{
+				//Flash LED if mode change works
+				AP_Notify::events.user_mode_change = 1;
+			}
+
 		}
 
 		long_press_flag_ch11 = false;
 	}
+
+
 
 }
 
@@ -835,7 +847,7 @@ void Copter::auto_config(){
 	motors->set_hover_RPM(g.rpm_hover);
 
 
-	compass.set_motor_compensation(1, Vector3f(0,0,0));
+	//compass.set_motor_compensation(1, Vector3f(0,0,0));
 
 
 }
