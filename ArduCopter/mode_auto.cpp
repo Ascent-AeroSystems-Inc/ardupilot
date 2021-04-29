@@ -1832,6 +1832,7 @@ bool ModeAuto::verify_nav_wp(const AP_Mission::Mission_Command& cmd)
 
     // start timer if necessary
     if (loiter_time == 0) {
+    	gcs().send_text(MAV_SEVERITY_INFO, "Reached command #%i",cmd.index);
         loiter_time = millis();
 		if (loiter_time_max > 0) {
 			// play a tone
@@ -1845,8 +1846,13 @@ bool ModeAuto::verify_nav_wp(const AP_Mission::Mission_Command& cmd)
 			// play a tone
 			AP_Notify::events.waypoint_complete = 1;
 			}
-        gcs().send_text(MAV_SEVERITY_INFO, "Reached command #%i",cmd.index);
-        return true;
+
+        if(waypoint_continue or loiter_time_max == 0){
+                	gcs().send_text(MAV_SEVERITY_INFO, "Continue");
+                	waypoint_continue = false;
+                	return true;
+                }
+
     }
     return false;
 }
@@ -1894,17 +1900,15 @@ bool ModeAuto::verify_spline_wp(const AP_Mission::Mission_Command& cmd)
 
     // start timer if necessary
     if (loiter_time == 0) {
+        gcs().send_text(MAV_SEVERITY_INFO, "Reach command #%i",cmd.index);
         loiter_time = millis();
         waypoint_continue = false;
     }
 
     // check if timer has run out
     if (((millis() - loiter_time) / 1000) >= loiter_time_max) {
-        gcs().send_text(MAV_SEVERITY_INFO, "Reach command #%i",cmd.index);
 
-
-
-        if(waypoint_continue){
+        if(waypoint_continue or loiter_time_max == 0){
         	gcs().send_text(MAV_SEVERITY_INFO, "Continue");
         	waypoint_continue = false;
         	return true;
