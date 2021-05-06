@@ -76,7 +76,7 @@ void AP_Mount_ViewPro::update()
 	hal.console->print("\n");
 	*/
 
-
+/*
 //Center yaw if switched to manual flight (!_RC_control_enable) and you are not currently tracking a GPS point
     if((get_mode() == MAV_MOUNT_MODE_RC_TARGETING) and !_RC_control_enable){
     	//set command if we just switched from RC control and to RC_targeting with the gimbal
@@ -84,6 +84,9 @@ void AP_Mount_ViewPro::update()
     		command_flags.center_yaw = true;
     		command_flags.zero_zoom = true;
     		command_flags.default_pip_color = true;
+
+			//_enable_follow = true;
+			//command_flags.enable_follow = true;
     	}
     	//set reset flag false so we don't keep sending
     	yaw_center_reset_flag = false;
@@ -91,6 +94,8 @@ void AP_Mount_ViewPro::update()
     }else{
     	yaw_center_reset_flag = true;
     }
+
+    */
 
     // update based on mount mode
     switch(get_mode()) {
@@ -155,8 +160,7 @@ void AP_Mount_ViewPro::update()
 
 		if(!is_zero(tilt_wheel_ch->norm_input_dz()) or (_RC_control_enable and (!is_zero(pan_ch->norm_input_dz()) or !is_zero(tilt_ch->norm_input_dz())))){
 			set_mode(MAV_MOUNT_MODE_RC_TARGETING);
-			_enable_follow = true;
-			command_flags.enable_follow = true;
+
 		}
 	}
 
@@ -213,7 +217,7 @@ void AP_Mount_ViewPro::send_mount_status(mavlink_channel_t chan)
     // return target angles as gimbal's actual attitude.
     mavlink_msg_mount_status_send(chan, 0, 0, _camera_tilt_angle, 0, _camera_pan_angle);
 
-    mavlink_msg_mount_orientation_send(chan, AP_HAL::millis(), 0, _camera_tilt_angle,_camera_pan_angle, _camera_pan_angle );
+   // mavlink_msg_mount_orientation_send(chan, AP_HAL::millis(), 0, _camera_tilt_angle,_camera_pan_angle, _camera_pan_angle );
 }
 
 bool AP_Mount_ViewPro::can_send(bool with_control) {

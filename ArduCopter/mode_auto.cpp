@@ -108,6 +108,8 @@ void ModeAuto::run()
         payload_place_run();
         break;
     }
+
+
 }
 
 // auto_loiter_start - initialises loitering in auto mode

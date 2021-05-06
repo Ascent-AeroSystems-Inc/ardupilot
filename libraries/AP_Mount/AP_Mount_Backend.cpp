@@ -147,7 +147,7 @@ void AP_Mount_Backend::calc_angle_to_location(const struct Location &target, Vec
     float GPS_vector_y = (target.lat-_frontend._current_loc.lat)*0.01113195f;
     float target_distance = 100.0f*norm(GPS_vector_x, GPS_vector_y);      // Careful , centimeters here locally. Baro/alt is in cm, lat/lon is in meters.
 
-    float GPS_vector_z = (_frontend._current_loc.alt); // Always assumes target is at the altitude of takeoff.  Should add consideration for 'target.alt'
+    float GPS_vector_z = (float)(_frontend._current_loc.alt); // Always assumes target is at the altitude of takeoff.  Should add consideration for 'target.alt'
 
     // initialise all angles to zero
     angles_to_target_deg.zero();
@@ -197,14 +197,25 @@ void AP_Mount_Backend::enable_RC_control(bool en)  {
 	if(en){
 
 		_RC_control_enable = true;
-		_enable_follow = false;
-		enable_follow(false);
+
+		if(_enable_follow){
+			enable_follow(false);
+			_enable_follow = false;
+		}else{
+
+		}
+
 
 	}else{
 
 		_RC_control_enable = false;
-		_enable_follow = true;
-		enable_follow(true);
+
+		if(!_enable_follow){
+			_enable_follow = true;
+			enable_follow(true);
+		}else{
+
+		}
 	}
 
 }
@@ -290,10 +301,6 @@ void AP_Mount_Backend::turn_camera_off(){command_flags.turn_camera_off = true; }
 
 void AP_Mount_Backend::start_stop_track(bool start){
 
-
-	hal.console->print("\n");
-	hal.console->print("in start_stop");
-	hal.console->print("\n");
 
 	if(start){
 		command_flags.start_track = true;

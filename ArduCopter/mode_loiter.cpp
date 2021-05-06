@@ -117,6 +117,7 @@ void ModeLoiter::run()
     // Loiter State Machine Determination
     AltHoldModeState loiter_state = get_alt_hold_state(target_climb_rate);
 
+
     // Loiter State Machine
     switch (loiter_state) {
 
@@ -166,6 +167,7 @@ void ModeLoiter::run()
         attitude_control->input_euler_angle_roll_pitch_euler_rate_yaw(0.0f, 0.0f, 0.0f);
         pos_control->relax_alt_hold_controllers(0.0f);   // forces throttle output to go to zero
         pos_control->update_z_controller();
+        copter.camera_mount.enable_RC_control(true);
         break;
 
     case AltHold_Flying:
