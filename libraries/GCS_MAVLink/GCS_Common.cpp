@@ -3240,7 +3240,11 @@ void GCS_MAVLINK::handle_odometry(const mavlink_message_t &msg)
     visual_odom->handle_vision_position_estimate(m.time_usec, timestamp_ms, m.x, m.y, m.z, q, posErr, angErr, m.reset_counter);
 
     const Vector3f vel{m.vx, m.vy, m.vz};
-    visual_odom->handle_vision_speed_estimate(m.time_usec, timestamp_ms, vel, m.reset_counter);
+
+    // Rotate vector from body frame to NED for compliance with the ExternalNav API 
+    const Vector3f vel_ned = q*vel;
+
+    visual_odom->handle_vision_speed_estimate(m.time_usec, timestamp_ms, vel_ned, m.reset_counter);
 #endif
 }
 
